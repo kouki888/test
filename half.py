@@ -31,7 +31,7 @@ if theme == "深色":
             background-color: #111111;
             color: white;
         }
-        h1, h2, h3, h4, h5, h6, p, label, span {
+        h1, h2, h3, h4, h5, h6, p, span {
             color: white !important;
         }
         .dataframe th, .dataframe td {
@@ -59,7 +59,7 @@ if theme == "深色":
             background-color: #f0f0f0 !important;
             color: black !important;
         }
-        
+        </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
