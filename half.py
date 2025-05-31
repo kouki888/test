@@ -32,7 +32,7 @@ if theme == "深色":
             background-color: #111111;
             color: white;
         }
-        h1, h2, h3, h4, h5, h6, p, span, div {
+        h1, h2, h3, h4, h5, h6, p,label, span, div {
             color: white !important;
         }
         .dataframe th, .dataframe td {
