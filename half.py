@@ -55,7 +55,7 @@ if theme == "深色":
             background-color: #222222 !important;
         }
 
-        /* 🌟 保持主題選單樣式不變：白底黑字 */
+        /* 🌟 保持主題選單樣式不變：白底黑字 
         .theme-select-box .stSelectbox {
             background-color: white !important;
             color: black !important;
@@ -68,7 +68,7 @@ if theme == "深色":
         .theme-select-box .stSelectbox div[data-baseweb="select"] {
             background-color: white !important;
             color: black !important;
-        }
+        }*/
         </style>
     """, unsafe_allow_html=True)
 else:
