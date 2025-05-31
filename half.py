@@ -104,8 +104,8 @@ if uploaded_file:
                 st.subheader("🧩 欄位篩選器")
                 column = st.selectbox("請選擇要顯示的欄位", df.columns)
                 st.dataframe(df[[column]].head(num_rows), use_container_width=True)
-   #     else:
-    #        st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
+        else:
+            st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
 
     except Exception as e:
         st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
