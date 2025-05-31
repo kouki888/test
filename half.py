@@ -5,11 +5,11 @@ from PIL import Image
 # ====== 頁面設定 ======
 st.set_page_config(page_title="📊 資料集分析工具", page_icon="📁", layout="wide")
 
-# ====== 🔒 主題選單設定區塊（樣式保持預設） ======
+# ====== 🔒 主題選單區塊（樣式保持白底黑字） ======
 with st.sidebar:
     st.header("🔧 設定選單")
-    
-    # 使用容器包住主題選單，方便套用特定樣式
+
+    # 用 container 包住 selectbox，加上自定 class 名稱
     with st.container():
         st.markdown('<div class="theme-select-box">', unsafe_allow_html=True)
         theme = st.selectbox("🎨 選擇主題色", ["淺色", "深色"], key="theme_select")
@@ -38,27 +38,38 @@ if theme == "深色":
         .dataframe th, .dataframe td {
             color: white !important;
         }
-        .css-1xarl3l {
-            background-color: #222222 !important;
-        }
 
-        /* 🌟 保持主題選單樣式不變：白底黑字 */
-        .theme-select-box .stSelectbox {
+        /* 🌟 保持主題選單樣式為白底黑字 */
+        .theme-select-box .stSelectbox,
+        .theme-select-box .stSelectbox > div {
             background-color: white !important;
             color: black !important;
             border: 1px solid #ddd !important;
             border-radius: 5px !important;
         }
+
         .theme-select-box label {
             color: black !important;
         }
-        .theme-select-box .stSelectbox div[data-baseweb="select"] {
+
+        .theme-select-box [data-baseweb="select"] {
             background-color: white !important;
+            color: black !important;
+        }
+
+        .theme-select-box [data-baseweb="select"] * {
+            color: black !important;
+            background-color: white !important;
+        }
+
+        .theme-select-box [data-baseweb="select"] div:hover {
+            background-color: #f0f0f0 !important;
             color: black !important;
         }
         </style>
     """, unsafe_allow_html=True)
 else:
+    # 淺色主題樣式（預設）
     st.markdown("""
         <style>
         .stApp {
