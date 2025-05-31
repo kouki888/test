@@ -5,11 +5,11 @@ from PIL import Image
 # ====== 頁面設定 ======
 st.set_page_config(page_title="📊 資料集分析工具", page_icon="📁", layout="wide")
 
-# ====== 🔒 主題選單區（樣式保持預設） ======
+# ====== 🔒 主題選單設定區塊（樣式保持預設） ======
 with st.sidebar:
     st.header("🔧 設定選單")
     
-    # 包裹住 selectbox 區塊，方便指定不被主題樣式改變
+    # 使用容器包住主題選單，方便套用特定樣式
     with st.container():
         st.markdown('<div class="theme-select-box">', unsafe_allow_html=True)
         theme = st.selectbox("🎨 選擇主題色", ["淺色", "深色"], key="theme_select")
@@ -38,6 +38,9 @@ if theme == "深色":
         .dataframe th, .dataframe td {
             color: white !important;
         }
+        .css-1xarl3l {
+            background-color: #222222 !important;
+        }
 
         /* 🌟 保持主題選單樣式不變：白底黑字 */
         .theme-select-box .stSelectbox {
@@ -49,22 +52,13 @@ if theme == "深色":
         .theme-select-box label {
             color: black !important;
         }
-        .theme-select-box [data-baseweb="select"] {
+        .theme-select-box .stSelectbox div[data-baseweb="select"] {
             background-color: white !important;
-            color: black !important;
-        }
-        .theme-select-box [data-baseweb="select"] div {
-            color: black !important;
-            background-color: white !important;
-        }
-        .theme-select-box [data-baseweb="select"] div:hover {
-            background-color: #f0f0f0 !important;
             color: black !important;
         }
         </style>
     """, unsafe_allow_html=True)
 else:
-    # 淺色主題樣式（使用預設樣式即可，也可以客製）
     st.markdown("""
         <style>
         .stApp {
@@ -91,7 +85,7 @@ if uploaded_file:
         df = pd.read_csv(uploaded_file)
         st.success("✅ 成功載入資料！")
 
-        # 分頁區塊
+        # 建立分頁
         tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
 
         with tab1:
