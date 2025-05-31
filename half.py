@@ -100,7 +100,7 @@ if uploaded_file:  # 如果使用者有上傳檔案
         st.success("✅ 成功載入資料！")  # 顯示成功訊息
 
         # 建立三個頁籤
-        tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
+        tab1, tab2 = st.tabs(["🔍 資料預覽", "📊 敘述統計"])
 
         # 頁籤一：預覽資料
         with tab1:
@@ -114,10 +114,10 @@ if uploaded_file:  # 如果使用者有上傳檔案
             st.write(df.describe())  # 使用 pandas 的 describe 方法統計摘要
 
         # 頁籤三：欄位篩選
-        with tab3:
-            st.subheader("🧩 欄位篩選器")
-            column = st.selectbox("請選擇要顯示的欄位", df.columns)  # 下拉選單選欄位
-            st.dataframe(df[[column]].head(num_rows), use_container_width=True)  # 顯示選定欄位
+#        with tab3:
+ #           st.subheader("🧩 欄位篩選器")
+  #          column = st.selectbox("請選擇要顯示的欄位", df.columns)  # 下拉選單選欄位
+   #         st.dataframe(df[[column]].head(num_rows), use_container_width=True)  # 顯示選定欄位
 
     except Exception as e:
         # 如果讀取資料失敗，顯示錯誤訊息
