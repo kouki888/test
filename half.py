@@ -79,4 +79,36 @@ else:
     """, unsafe_allow_html=True)
 
 # ====== 主頁面內容 ======
-st
+st.title("📁 公開資料集上傳與分析")
+st.markdown("上傳一個 Kaggle 或其他來源的 `.csv` 檔案，進行資料預覽與簡易分析。")
+
+# ====== 上傳檔案 ======
+uploaded_file = st.file_uploader("📤 上傳你的 CSV 檔案", type=["csv"])
+
+# ====== 資料處理區 ======
+if uploaded_file:
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.success("✅ 成功載入資料！")
+
+        # 分頁區塊
+        tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
+
+        with tab1:
+            if show_preview:
+                st.subheader("🔍 預覽前幾列")
+                st.dataframe(df.head(num_rows), use_container_width=True)
+
+        with tab2:
+            st.subheader("📊 資料敘述統計")
+            st.write(df.describe())
+
+        with tab3:
+            st.subheader("🧩 欄位篩選器")
+            column = st.selectbox("請選擇要顯示的欄位", df.columns)
+            st.dataframe(df[[column]].head(num_rows), use_container_width=True)
+
+    except Exception as e:
+        st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
+else:
+    st.warning("📌 請上傳一個 `.csv` 檔案。")
