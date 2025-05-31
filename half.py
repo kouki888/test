@@ -59,7 +59,7 @@ if theme == "深色":
             background-color: #f0f0f0 !important;
             color: black !important;
         }
-        </style>
+        
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
