@@ -18,28 +18,62 @@ with st.sidebar:
     st.header("🎨 主題設定")
     theme = st.selectbox("選擇主題色", ["淺色", "深色"])
 
-# ===== 主題樣式套用 =====
+# ====== 主題樣式切換 ======
 if theme == "深色":
     st.markdown("""
         <style>
-        .stApp { background-color: #000; color: white; }
-        section[data-testid="stSidebar"] { background-color: #111; color: white; }
-        .theme-select-box label, .theme-select-box select,
-        .theme-select-box div[data-baseweb] {
+        .stApp {
+            background-color: #000000;
+            color: white;
+        }
+        section[data-testid="stSidebar"] {
+            background-color: #111111;
+            color: white;
+        }
+        h1, h2, h3, h4, h5, h6, p {
+            color: white !important;
+        }
+        .dataframe th, .dataframe td {
+            color: white !important;
+        }
+        .theme-select-box .stSelectbox,
+        .theme-select-box .stSelectbox > div {
+            background-color: white !important;
+            color: black !important;
+            border: 1px solid #ddd !important;
+            border-radius: 5px !important;
+        }
+        .theme-select-box label {
+            color: black !important;
+        }
+        .theme-select-box [data-baseweb="select"] {
             background-color: white !important;
             color: black !important;
         }
-        .dataframe th, .dataframe td { color: white !important; }
+        .theme-select-box [data-baseweb="select"] * {
+            color: black !important;
+            background-color: white !important;
+        }
+        .theme-select-box [data-baseweb="select"] div:hover {
+            background-color: #f0f0f0 !important;
+            color: black !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
         <style>
-        .stApp { background-color: #fff; color: black; }
-        section[data-testid="stSidebar"] { background-color: #f0f2f6; color: black; }
+        .stApp {
+            background-color: #ffffff;
+            color: black;
+        }
+        section[data-testid="stSidebar"] {
+            background-color: #f0f2f6;
+            color: black;
+        }
         </style>
     """, unsafe_allow_html=True)
-
+    
 # ===== 功能 1：資料集分析 =====
 if page == "📊 資料集分析":
     st.title("📁 公開資料集上傳與分析")
