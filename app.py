@@ -7,7 +7,7 @@ import os
 st.set_page_config(page_title="🧠 多功能 AI 工具箱", page_icon="🧰", layout="wide")
 
 # ===== API 金鑰設定（建議使用環境變數）=====
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=os.getenv("AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w"))
 
 # ===== 側邊欄：選單 =====
 with st.sidebar:
