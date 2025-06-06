@@ -5,7 +5,7 @@ from PIL import Image
 import requests
 
 # ====== 頁面設定 ======
-st.set_page_config(page_title="🧠 資料分析 + Gemini 對話", page_icon="📊", layout="wide")
+st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
 # ====== API 金鑰設定 ======
 # 🚨 請替換為你自己的 Gemini API 金鑰
