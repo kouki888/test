@@ -99,7 +99,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
-    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=150)
+    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
     if st.button("🚀 送出"):
         if user_input.strip() == "":
