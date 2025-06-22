@@ -6,7 +6,6 @@ from datetime import datetime
 import requests
 import hashlib
 
-import streamlit as st
 st.write(st.__version__)
 
 # ====== 頁面設定 ======
