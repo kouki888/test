@@ -126,8 +126,8 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         st.session_state.input_text = ""  # 清空輸入框
 
         if submitted and user_input.strip():
-    # 建立主題名稱
-    topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
+        # 建立主題名稱
+        topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
 
     # 建立 chat session if not exists
     if topic_title not in st.session_state.topics:
