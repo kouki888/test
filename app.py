@@ -125,30 +125,30 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         st.session_state.submitted = False  # 重置狀態
         st.session_state.input_text = ""  # 清空輸入框
 
-        if user_input:
-            # 建立主題名稱（從輸入前幾字取名）
-            topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
-            if topic_title not in st.session_state.topics:
-                model = genai.GenerativeModel("models/gemini-1.5-flash")
-                chat = model.start_chat(history=[])
-                st.session_state.topics[topic_title] = chat
-            st.session_state.active_topic = topic_title
-            chat = st.session_state.topics[topic_title]
+        if submitted and user_input.strip():
+    # 建立主題名稱
+    topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
 
-            with st.spinner("Gemini 正在生成回應..."):
-                try:
-                    response = chat.send_message(user_input, stream=True)
-                    full_response = ""
-                    for chunk in response:
-                        if chunk.text:
-                            full_response += chunk.text
-                    # 顯示聊天紀錄（立即）
-                    if "chat_log" not in st.session_state:
-                        st.session_state.chat_log = []
-                    st.session_state.chat_log.append((user_input, full_response))
+    # 建立 chat session if not exists
+    if topic_title not in st.session_state.topics:
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        chat = model.start_chat(history=[])
+        st.session_state.topics[topic_title] = chat
 
-                except Exception as e:
-                    st.error(f"❌ 發生錯誤：{e}")
+    st.session_state.active_topic = topic_title
+    chat = st.session_state.topics[topic_title]
+
+    with st.spinner("Gemini 正在生成回應..."):
+        try:
+            response = chat.send_message(user_input, stream=True)
+            full_response = ""
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+
+        except Exception as e:
+            st.error(f"❌ 發生錯誤：{e}")
+
 
     # ====== 顯示對話內容（持續對話） ======
     if st.session_state.active_topic:
