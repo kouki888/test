@@ -6,6 +6,9 @@ from datetime import datetime
 import requests
 import hashlib
 
+import streamlit as st
+st.write(st.__version__)
+
 # ====== 頁面設定 ======
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
