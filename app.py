@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 from PIL import Image
-from datetime import datetime
 import requests
 import hashlib
 
@@ -79,77 +78,67 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-# ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
+# ====== 🤖 功能 2：Gemini 聊天機器人 ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
-    st.markdown("請輸入問題，Gemini 將會持續與你對話。")
+    st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
-    # 初始化狀態
+    # ====== 初始化聊天狀態 ======
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
-    if "chat_title" not in st.session_state:
-        st.session_state.chat_title = None
-    if "input_key" not in st.session_state:
-        st.session_state.input_key = "input1"
+    if "selected_chat" not in st.session_state:
+        st.session_state.selected_chat = None
 
-    # 側邊欄功能
+    # ====== 側邊欄顯示聊天主題列表 ======
     with st.sidebar:
         st.markdown("---")
-        st.header("🗂️ 對話主題")
-        if st.session_state.chat_title:
-            st.button(st.session_state.chat_title, disabled=True)
+        st.header("🗂️ 聊天紀錄")
+        for i, chat in enumerate(st.session_state.chat_history):
+            if st.button(chat["title"], key=f"chat_{i}"):
+                st.session_state.selected_chat = i
 
         if st.button("🧹 清除聊天紀錄"):
             st.session_state.chat_history = []
-            st.session_state.chat_title = None
-            st.session_state.input_key = "input1"  # 重設輸入框 key
+            st.session_state.selected_chat = None
 
-        if st.button("🧯 強制清除（修復錯誤）"):
-            st.session_state.clear()
+    # ====== 使用者輸入問題 ======
+    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
-    # 顯示聊天歷史（安全）
-    for chat in st.session_state.chat_history:
-        user_msg = chat.get("user", "（無使用者訊息）")
-        gemini_reply = chat.get("gemini", "（無 Gemini 回應）")
-
-        st.markdown("👤 **你說：**")
-        st.info(user_msg)
-        st.markdown("🤖 **Gemini 回應：**")
-        st.success(gemini_reply)
-
-    # ====== 使用者輸入 ======
-    user_input = st.text_area("✏️ 輸入你的問題", key=st.session_state.input_key, height=100)
-
-    if st.button("🚀 送出", key="send_btn"):
+    if st.button("🚀 送出"):
         if user_input.strip() == "":
-            st.warning("請輸入內容再送出。")
+            st.warning("請輸入問題後再送出。")
+        elif len(user_input) > 1000:
+            st.warning("⚠️ 輸入過長，請簡化你的問題（最多 1000 字元）。")
         else:
-            with st.spinner("Gemini 正在回應中..."):
+            with st.spinner("Gemini 正在生成回應..."):
                 try:
+                    # 建立 Gemini 模型實例
                     model = genai.GenerativeModel("models/gemini-1.5-flash")
+
+                    # 取得回應
                     response = model.generate_content(user_input)
-                    reply = response.text.strip()
+                    answer = response.text.strip()
 
-                    # 產生主題（第一次對話）
-                    if not st.session_state.chat_title:
-                        title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n使用者：{user_input}\nGemini：{reply}"
-                        title_resp = model.generate_content(title_prompt)
-                        title = title_resp.text.strip().split("\n")[0]
-                        st.session_state.chat_title = title if title else "未命名對話"
+                    # 自動生成主題
+                    title_prompt = f"請用 5 到 10 個字概括這個問題主題：\n{user_input}"
+                    title_response = model.generate_content(title_prompt)
+                    topic_title = title_response.text.strip().split("\n")[0]
 
-                    # 儲存聊天紀錄
+                    # 加入聊天紀錄
                     st.session_state.chat_history.append({
-                        "user": user_input,
-                        "gemini": reply,
-                        "timestamp": datetime.now().isoformat()
+                        "title": topic_title,
+                        "user_input": user_input,
+                        "response": answer
                     })
-
-                    # 切換輸入框 key，以清空輸入內容
-                    if st.session_state.input_key == "input1":
-                        st.session_state.input_key = "input2"
-                    else:
-                        st.session_state.input_key = "input1"
+                    st.session_state.selected_chat = len(st.session_state.chat_history) - 1
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
+    # ====== 顯示選定聊天記錄 ======
+    if st.session_state.selected_chat is not None:
+        selected = st.session_state.chat_history[st.session_state.selected_chat]
+        st.subheader("👤 使用者問題")
+        st.info(selected["user_input"])
+        st.subheader("🤖 Gemini 回應")
+        st.success(selected["response"])
