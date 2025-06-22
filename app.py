@@ -78,13 +78,6 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-import streamlit as st
-import google.generativeai as genai
-from datetime import datetime
-
-# 設定 Gemini API 金鑰（請替換為你自己的）
-genai.configure(api_key="你的_API_KEY")
-
 # ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
