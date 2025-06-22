@@ -137,9 +137,6 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                     })
                     st.session_state.selected_chat = len(st.session_state.chat_history) - 1
 
-                    # 重整以顯示最新對話
-                    st.experimental_rerun()
-
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
