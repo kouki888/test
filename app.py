@@ -90,7 +90,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     if "chat_title" not in st.session_state:
         st.session_state.chat_title = None
 
-    # ====== 側邊欄：主題列表 ======
+    # 側邊欄：主題列表和清除功能
     with st.sidebar:
         st.markdown("---")
         st.header("🗂️ 對話主題")
@@ -102,7 +102,11 @@ elif app_mode == "🤖 Gemini 聊天機器人":
             st.session_state.chat_title = None
             st.experimental_rerun()
 
-    # ====== 顯示對話歷史 ======
+        if st.button("🧯 強制清除（修復錯誤）"):
+            st.session_state.clear()
+            st.experimental_rerun()
+
+    # 顯示對話歷史，避免 KeyError
     for chat in st.session_state.chat_history:
         user_msg = chat.get("user", "（無使用者訊息）")
         gemini_reply = chat.get("gemini", "（無 Gemini 回應）")
@@ -112,7 +116,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         st.markdown("🤖 **Gemini 回應：**")
         st.success(gemini_reply)
 
-    # ====== 使用者輸入新問題 ======
+    # 使用者輸入區塊
     user_input = st.text_area("✏️ 輸入你的問題", key="new_input", height=100)
 
     if st.button("🚀 送出", key="send_btn"):
@@ -125,24 +129,22 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                     response = model.generate_content(user_input)
                     reply = response.text.strip()
 
-                    # 產生主題（第一次）
+                    # 第一次輸入時產生主題
                     if not st.session_state.chat_title:
                         title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n使用者：{user_input}\nGemini：{reply}"
                         title_resp = model.generate_content(title_prompt)
                         title = title_resp.text.strip().split("\n")[0]
                         st.session_state.chat_title = title if title else "未命名對話"
 
-                    # 儲存對話
+                    # 加入聊天紀錄
                     st.session_state.chat_history.append({
                         "user": user_input,
                         "gemini": reply,
                         "timestamp": datetime.now().isoformat()
                     })
 
-                    # 清空輸入框並更新畫面
-                    st.session_state.new_input = ""
+                    # 重新載入頁面以清空輸入框
                     st.experimental_rerun()
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
-
