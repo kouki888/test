@@ -130,12 +130,13 @@ elif app_mode == "🤖 Gemini 聊天機器人":
             topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
 
     # 建立 chat session if not exists
-            if topic_title not in st.session_state.topics:
-                model = genai.GenerativeModel("models/gemini-1.5-flash")
-                chat = model.start_chat(history=[])
-                st.session_state.topics[topic_title] = chat
-                st.session_state.active_topic = topic_title
-                chat = st.session_state.topics[topic_title]
+    if topic_title not in st.session_state.topics:
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        chat = model.start_chat(history=[])
+        st.session_state.topics[topic_title] = chat
+
+    st.session_state.active_topic = topic_title
+    chat = st.session_state.topics[topic_title]
 
     with st.spinner("Gemini 正在生成回應..."):
         try:
