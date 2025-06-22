@@ -152,18 +152,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         st.success("✅ 已清空所有主題與對話。")
 
     # ====== 顯示目前主題對話歷程 ======
-    if st.session_state.active_topic:
-        with st.expander(f"🕘 查看對話歷程：{st.session_state.active_topic}"):
-            history = st.session_state.topics[st.session_state.active_topic].history
-            for msg in history:
-                role = msg.role
-                text = msg.parts[0].text if msg.parts else ""
-                if role == "user":
-                    st.markdown(f"**你：** {text}")
-                else:
-                    st.markdown(f"**Gemini：** {text}")
-
-        # 顯示對話歷史
+            # 顯示對話歷史
         with st.expander("🕘 查看對話歷程"):
             for msg in st.session_state.chat.history:
                 role = msg.role  # "user" 或 "model"
