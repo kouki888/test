@@ -123,7 +123,6 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                     st.success("✅ Gemini 回應：")
                     st.markdown(f"<div style='white-space: pre-wrap;'>{full_response}</div>", unsafe_allow_html=True)
 
-
                 except requests.exceptions.Timeout:
                     st.error("⏰ 請求逾時，請稍後再試。")
                 except Exception as e:
