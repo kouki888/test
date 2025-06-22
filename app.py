@@ -78,11 +78,12 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
+# ====== 🤖 功能 2：Gemini 聊天機器人 ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
-    # ====== 初始化狀態 ======
+    # ====== 初始化聊天狀態 ======
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     if "selected_chat" not in st.session_state:
@@ -92,21 +93,15 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     with st.sidebar:
         st.markdown("---")
         st.header("🗂️ 聊天紀錄")
-
-        if len(st.session_state.chat_history) == 0:
-            st.caption("尚無聊天紀錄。")
-        else:
-            for i, chat in enumerate(st.session_state.chat_history):
-                chat_title = chat.get("title", f"對話 {i + 1}")
-                if st.button(chat_title, key=f"chat_{i}"):
-                    st.session_state.selected_chat = i
+        for i, chat in enumerate(st.session_state.chat_history):
+            if st.button(chat["title"], key=f"chat_{i}"):
+                st.session_state.selected_chat = i
 
         if st.button("🧹 清除聊天紀錄"):
             st.session_state.chat_history = []
             st.session_state.selected_chat = None
-            st.experimental_rerun()
 
-    # ====== 使用者輸入區 ======
+    # ====== 使用者輸入問題 ======
     user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
     if st.button("🚀 送出"):
@@ -117,19 +112,19 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         else:
             with st.spinner("Gemini 正在生成回應..."):
                 try:
+                    # 建立 Gemini 模型實例
                     model = genai.GenerativeModel("models/gemini-1.5-flash")
 
-                    # 產生回答
+                    # 取得回應
                     response = model.generate_content(user_input)
                     answer = response.text.strip()
 
-                    # 產生主題
+                    # 自動生成主題
                     title_prompt = f"請用 5 到 10 個字概括這個問題主題：\n{user_input}"
                     title_response = model.generate_content(title_prompt)
                     topic_title = title_response.text.strip().split("\n")[0]
-                    topic_title = topic_title if topic_title else "未命名對話"
 
-                    # 儲存紀錄
+                    # 加入聊天紀錄
                     st.session_state.chat_history.append({
                         "title": topic_title,
                         "user_input": user_input,
@@ -140,11 +135,10 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
-    # ====== 顯示選定聊天紀錄 ======
+    # ====== 顯示選定聊天記錄 ======
     if st.session_state.selected_chat is not None:
         selected = st.session_state.chat_history[st.session_state.selected_chat]
         st.subheader("👤 使用者問題")
-        st.info(selected.get("user_input", "（無內容）"))
+        st.info(selected["user_input"])
         st.subheader("🤖 Gemini 回應")
-        st.success(selected.get("response", "（無回應）"))
-
+        st.success(selected["response"])
