@@ -79,7 +79,9 @@ if app_mode == "📊 資料集分析":
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
 # ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
-elif app_mode == "🤖 Gemini 聊天機器人":
+app_mode = "🤖 Gemini 聊天機器人"  # 假設你控制頁面的變數
+
+if app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入問題，Gemini 將會持續與你對話。")
 
@@ -89,7 +91,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     if "chat_title" not in st.session_state:
         st.session_state.chat_title = None  # 主題名稱
 
-    # ====== 側邊欄：主題列表 ======
+    # ====== 側邊欄：主題列表與清除按鈕 ======
     with st.sidebar:
         st.markdown("---")
         st.header("🗂️ 對話主題")
@@ -99,13 +101,21 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         if st.button("🧹 清除聊天紀錄"):
             st.session_state.chat_history = []
             st.session_state.chat_title = None
+            st.experimental_rerun()
 
-    # 顯示對話歷史（持續聊天）
+        if st.button("🧯 強制清除紀錄（修復錯誤）"):
+            st.session_state.clear()
+            st.experimental_rerun()
+
+    # 顯示對話歷史（防錯）
     for chat in st.session_state.chat_history:
+        user_msg = chat.get("user", "（無使用者訊息）")
+        gemini_reply = chat.get("gemini", "（無 Gemini 回應）")
+
         st.markdown("👤 **你說：**")
-        st.info(chat["user"])
+        st.info(user_msg)
         st.markdown("🤖 **Gemini 回應：**")
-        st.success(chat["gemini"])
+        st.success(gemini_reply)
 
     # ====== 使用者輸入新問題 ======
     user_input = st.text_area("✏️ 輸入你的問題", key="new_input", height=100)
@@ -120,20 +130,23 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                     response = model.generate_content(user_input)
                     reply = response.text.strip()
 
-                    # 第一句產生主題（只在首次輸入時執行）
+                    # 第一次輸入時建立對話主題（用 user + reply 更準確）
                     if not st.session_state.chat_title:
-                        title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n{user_input}"
+                        title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n使用者：{user_input}\nGemini：{reply}"
                         title_resp = model.generate_content(title_prompt)
-                        st.session_state.chat_title = title_resp.text.strip().split("\n")[0]
+                        title = title_resp.text.strip().split("\n")[0]
+                        st.session_state.chat_title = title if title else "未命名對話"
 
-                    # 加入聊天紀錄
+                    # 儲存對話
                     st.session_state.chat_history.append({
                         "user": user_input,
-                        "gemini": reply
+                        "gemini": reply,
+                        "timestamp": datetime.now().isoformat()
                     })
 
-                    # 清除輸入框內容
+                    # 清除輸入框
                     st.session_state.new_input = ""
+                    st.experimental_rerun()
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
