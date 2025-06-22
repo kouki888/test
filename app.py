@@ -132,11 +132,12 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         else:
             st.info("ℹ️ 此主題已產生回應，請查看下方對話紀錄。")
 
-    # 側邊欄主題選單
+        # 側邊欄主題選單
     with st.sidebar:
         st.subheader("🗂️ 你的聊天主題")
         for topic_hash, topic_data in st.session_state.topics.items():
-            if st.button(topic_data["title"], key=topic_hash):
+            topic_title = topic_data.get("title", "未命名主題")
+            if st.button(topic_title, key=topic_hash):
                 st.session_state.active_topic = topic_hash
 
         if st.button("🧹 清空所有主題"):
@@ -144,7 +145,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
             st.session_state.active_topic = None
             st.success("✅ 已清空所有主題與對話。")
 
-    # 顯示對話紀錄
+        # 顯示對話紀錄
     if st.session_state.active_topic:
         topic_obj = st.session_state.topics[st.session_state.active_topic]
         chat = topic_obj["chat"]
@@ -158,4 +159,5 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                 st.markdown(f"🧑‍💬 **你：** {text}")
             else:
                 st.markdown(f"🤖 **Gemini：** {text}")
+
 
