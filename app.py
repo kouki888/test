@@ -8,8 +8,7 @@ import requests
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
 # ====== API 金鑰設定 ======
-# 🚨 請替換為你自己的 Gemini API 金鑰
-genai.configure(api_key="AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w")
+genai.configure(api_key="AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w")  # 🚨 請替換為你自己的金鑰
 
 # ====== 🔒 側邊欄選單 ======
 with st.sidebar:
@@ -94,10 +93,15 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-# ====== 功能 2: Gemini 聊天機器人 ======
+# ====== 功能 2: Gemini 聊天機器人（保留對話歷史） ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
-    st.markdown("請輸入任何問題，Gemini 將會回應你。")
+    st.markdown("請輸入任何問題，Gemini 將會回應你，並延續上下文。")
+
+    # 建立模型與聊天上下文
+    if "chat" not in st.session_state:
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        st.session_state.chat = model.start_chat(history=[])
 
     user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
@@ -109,10 +113,7 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         else:
             with st.spinner("Gemini 正在生成回應..."):
                 try:
-                    model = genai.GenerativeModel("models/gemini-1.5-flash")
-                    response = model.generate_content(user_input, stream=True)
-
-                    st.success("✅ Gemini 回應：")
+                    response = st.session_state.chat.send_message(user_input, stream=True)
                     full_response = ""
                     for chunk in response:
                         if chunk.text:
@@ -123,3 +124,15 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                     st.error("⏰ 請求逾時，請稍後再試。")
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
+
+    # 重新開始聊天
+    if st.button("🧹 重新開始對話"):
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        st.session_state.chat = model.start_chat(history=[])
+        st.success("✅ 已重設對話。")
+
+    # 顯示對話歷史
+    with st.expander("🕘 查看對話歷程"):
+        for i, (user_msg, bot_msg) in enumerate(st.session_state.chat.history):
+            st.markdown(f"**你：** {user_msg.parts[0].text}")
+            st.markdown(f"**Gemini：** {bot_msg.parts[0].text}")
