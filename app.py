@@ -136,10 +136,10 @@ elif app_mode == "🤖 Gemini 聊天機器人":
 
     # 顯示對話歷史
     with st.expander("🕘 查看對話歷程"):
-    for msg in st.session_state.chat.history:
-        role = msg.role  # "user" 或 "model"
-        text = msg.parts[0].text if msg.parts else ""
-        if role == "user":
-            st.markdown(f"**你：** {text}")
-        else:
-            st.markdown(f"**Gemini：** {text}")
+        for msg in st.session_state.chat.history:
+            role = msg.role  # "user" 或 "model"
+            text = msg.parts[0].text if msg.parts else ""
+            if role == "user":
+                st.markdown(f"**你：** {text}")
+            else:
+                st.markdown(f"**Gemini：** {text}")
