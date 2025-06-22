@@ -89,18 +89,6 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     if "selected_chat" not in st.session_state:
         st.session_state.selected_chat = None
 
-    # ====== 側邊欄顯示聊天主題列表 ======
-    with st.sidebar:
-        st.markdown("---")
-        st.header("🗂️ 聊天紀錄")
-        for i, chat in enumerate(st.session_state.chat_history):
-            if st.button(chat["title"], key=f"chat_{i}"):
-                st.session_state.selected_chat = i
-
-        if st.button("🧹 清除聊天紀錄"):
-            st.session_state.chat_history = []
-            st.session_state.selected_chat = None
-
     # ====== 使用者輸入問題 ======
     user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
@@ -112,33 +100,46 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         else:
             with st.spinner("Gemini 正在生成回應..."):
                 try:
-                    # 建立 Gemini 模型實例
+                    # 建立模型
                     model = genai.GenerativeModel("models/gemini-1.5-flash")
 
-                    # 取得回應
+                    # 回應內容
                     response = model.generate_content(user_input)
-                    answer = response.text.strip()
+                    reply = response.text.strip()
 
-                    # 自動生成主題
-                    title_prompt = f"請用 5 到 10 個字概括這個問題主題：\n{user_input}"
-                    title_response = model.generate_content(title_prompt)
-                    topic_title = title_response.text.strip().split("\n")[0]
+                    # 自動產生主題（限制 10 字內）
+                    title_prompt = f"請用不超過10個中文字為以下內容取一個簡短主題：\n{user_input}"
+                    title_resp = model.generate_content(title_prompt)
+                    title = title_resp.text.strip().split("\n")[0]
 
-                    # 加入聊天紀錄
+                    # 加入對話紀錄
                     st.session_state.chat_history.append({
-                        "title": topic_title,
+                        "title": title,
                         "user_input": user_input,
-                        "response": answer
+                        "response": reply
                     })
                     st.session_state.selected_chat = len(st.session_state.chat_history) - 1
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
-    # ====== 顯示選定聊天記錄 ======
+    # ====== 側邊欄：聊天主題清單 ======
+    with st.sidebar:
+        st.markdown("---")
+        st.header("🗂️ 聊天紀錄")
+
+        for idx, chat in enumerate(st.session_state.chat_history):
+            if st.button(chat["title"], key=f"chat_{idx}"):
+                st.session_state.selected_chat = idx
+
+        if st.button("🧹 清除所有聊天紀錄"):
+            st.session_state.chat_history = []
+            st.session_state.selected_chat = None
+
+    # ====== 主畫面：顯示選定對話 ======
     if st.session_state.selected_chat is not None:
-        selected = st.session_state.chat_history[st.session_state.selected_chat]
+        chat = st.session_state.chat_history[st.session_state.selected_chat]
         st.subheader("👤 使用者問題")
-        st.info(selected["user_input"])
+        st.info(chat["user_input"])
         st.subheader("🤖 Gemini 回應")
-        st.success(selected["response"])
+        st.success(chat["response"])
