@@ -3,6 +3,7 @@ import pandas as pd
 import google.generativeai as genai
 from PIL import Image
 import requests
+import hashlib
 
 # ====== 頁面設定 ======
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
@@ -28,33 +29,17 @@ with st.sidebar:
 if theme == "深色":
     st.markdown("""
         <style>
-        .stApp {
-            background-color: #000000;
-            color: white;
-        }
-        section[data-testid="stSidebar"] {
-            background-color: #111111;
-            color: white;
-        }
-        h1, h2, h3, h4, h5, h6, p {
-            color: white !important;
-        }
-        .dataframe th, .dataframe td {
-            color: white !important;
-        }
+        .stApp { background-color: #000000; color: white; }
+        section[data-testid="stSidebar"] { background-color: #111111; color: white; }
+        h1, h2, h3, h4, h5, h6, p { color: white !important; }
+        .dataframe th, .dataframe td { color: white !important; }
         </style>
     """, unsafe_allow_html=True)
 else:
     st.markdown("""
         <style>
-        .stApp {
-            background-color: #ffffff;
-            color: black;
-        }
-        section[data-testid="stSidebar"] {
-            background-color: #f0f2f6;
-            color: black;
-        }
+        .stApp { background-color: #ffffff; color: black; }
+        section[data-testid="stSidebar"] { background-color: #f0f2f6; color: black; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -93,66 +78,69 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
+# ====== 功能 2: Gemini 聊天機器人 ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將回應你，並自動為對話產生主題並加入左側清單。")
 
-    # 初始化 Session State
+    # 初始化聊天記憶
     if "topics" not in st.session_state:
-        st.session_state.topics = {}  # 儲存每個主題對應的 chat 物件
+        st.session_state.topics = {}  # { hash_key: chat_obj }
     if "active_topic" not in st.session_state:
         st.session_state.active_topic = None
+    if "topic_titles" not in st.session_state:
+        st.session_state.topic_titles = {}  # { hash_key: readable_title }
 
-    # ====== 使用者輸入框 ======
+    # 使用者輸入區
     user_input = st.text_input("✏️ 請輸入你的問題")
     submitted = st.button("🚀 送出")
 
-    # ====== 若使用者送出訊息 ======
     if submitted and user_input.strip():
-        # 自動產生主題名稱
-        topic_title = user_input.strip()[:20] + "..." if len(user_input.strip()) > 20 else user_input.strip()
+        user_input_clean = user_input.strip()
+        topic_hash = hashlib.md5(user_input_clean.encode()).hexdigest()
+        topic_title = user_input_clean[:20] + "..." if len(user_input_clean) > 20 else user_input_clean
 
-        # 若是新主題則建立 chat 並加入 topics
-        if topic_title not in st.session_state.topics:
+        # 建立或切換主題
+        if topic_hash not in st.session_state.topics:
             model = genai.GenerativeModel("models/gemini-1.5-flash")
             chat = model.start_chat(history=[])
-            st.session_state.topics[topic_title] = chat
-        else:
-            chat = st.session_state.topics[topic_title]
+            st.session_state.topics[topic_hash] = chat
+            st.session_state.topic_titles[topic_hash] = topic_title
 
-        # 設定目前主題為這一則輸入
-        st.session_state.active_topic = topic_title
+        st.session_state.active_topic = topic_hash
+        chat = st.session_state.topics[topic_hash]
 
-        # 發送訊息並取得回覆
+        # 發送訊息與回覆
         with st.spinner("💬 Gemini 正在思考中..."):
             try:
-                response = chat.send_message(user_input, stream=True)
+                response = chat.send_message(user_input_clean, stream=True)
                 full_response = ""
                 for chunk in response:
                     if chunk.text:
                         full_response += chunk.text
                 st.success("✅ Gemini 回應：")
                 st.markdown(f"<div style='white-space: pre-wrap;'>{full_response}</div>", unsafe_allow_html=True)
-
             except Exception as e:
                 st.error(f"❌ 發生錯誤：{e}")
 
-    # ====== 側邊欄主題清單 ======
+    # 側邊欄主題選單
     with st.sidebar:
         st.subheader("🗂️ 你的聊天主題")
-        for topic_name in list(st.session_state.topics.keys()):
-            if st.button(topic_name, key=topic_name):
-                st.session_state.active_topic = topic_name
+        for topic_hash, title in st.session_state.topic_titles.items():
+            if st.button(title, key=topic_hash):
+                st.session_state.active_topic = topic_hash
 
         if st.button("🧹 清空所有主題"):
             st.session_state.topics = {}
+            st.session_state.topic_titles = {}
             st.session_state.active_topic = None
             st.success("✅ 已清空所有主題與對話。")
 
-    # ====== 顯示目前主題對話歷程 ======
+    # 顯示對話紀錄
     if st.session_state.active_topic:
-        st.markdown(f"### 🧠 主題：**{st.session_state.active_topic}**")
         chat = st.session_state.topics[st.session_state.active_topic]
+        title = st.session_state.topic_titles[st.session_state.active_topic]
+        st.markdown(f"### 🧠 主題：**{title}**")
         for msg in chat.history:
             role = msg.role
             text = msg.parts[0].text if msg.parts else ""
@@ -160,4 +148,3 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                 st.markdown(f"🧑‍💬 **你：** {text}")
             else:
                 st.markdown(f"🤖 **Gemini：** {text}")
-
