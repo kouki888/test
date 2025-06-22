@@ -78,68 +78,62 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-# ====== 🤖 功能 2：Gemini 聊天機器人 ======
+# ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
-    st.markdown("請輸入任何問題，Gemini 將會回應你。")
+    st.markdown("請輸入問題，Gemini 將會持續與你對話。")
 
-    # ====== 初始化聊天狀態 ======
+    # 初始化對話狀態
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "selected_chat" not in st.session_state:
-        st.session_state.selected_chat = None
+        st.session_state.chat_history = []  # 所有對話
+    if "chat_title" not in st.session_state:
+        st.session_state.chat_title = None  # 主題名稱
 
-    # ====== 使用者輸入問題 ======
-    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
+    # ====== 側邊欄：主題列表 ======
+    with st.sidebar:
+        st.markdown("---")
+        st.header("🗂️ 對話主題")
+        if st.session_state.chat_title:
+            st.button(st.session_state.chat_title, disabled=True)
 
-    if st.button("🚀 送出"):
+        if st.button("🧹 清除聊天紀錄"):
+            st.session_state.chat_history = []
+            st.session_state.chat_title = None
+
+    # 顯示對話歷史（持續聊天）
+    for chat in st.session_state.chat_history:
+        st.markdown("👤 **你說：**")
+        st.info(chat["user"])
+        st.markdown("🤖 **Gemini 回應：**")
+        st.success(chat["gemini"])
+
+    # ====== 使用者輸入新問題 ======
+    user_input = st.text_area("✏️ 輸入你的問題", key="new_input", height=100)
+
+    if st.button("🚀 送出", key="send_btn"):
         if user_input.strip() == "":
-            st.warning("請輸入問題後再送出。")
-        elif len(user_input) > 1000:
-            st.warning("⚠️ 輸入過長，請簡化你的問題（最多 1000 字元）。")
+            st.warning("請輸入內容再送出。")
         else:
-            with st.spinner("Gemini 正在生成回應..."):
+            with st.spinner("Gemini 正在回應中..."):
                 try:
-                    # 建立模型
                     model = genai.GenerativeModel("models/gemini-1.5-flash")
-
-                    # 回應內容
                     response = model.generate_content(user_input)
                     reply = response.text.strip()
 
-                    # 自動產生主題（限制 10 字內）
-                    title_prompt = f"請用不超過10個中文字為以下內容取一個簡短主題：\n{user_input}"
-                    title_resp = model.generate_content(title_prompt)
-                    title = title_resp.text.strip().split("\n")[0]
+                    # 第一句產生主題（只在首次輸入時執行）
+                    if not st.session_state.chat_title:
+                        title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n{user_input}"
+                        title_resp = model.generate_content(title_prompt)
+                        st.session_state.chat_title = title_resp.text.strip().split("\n")[0]
 
-                    # 加入對話紀錄
+                    # 加入聊天紀錄
                     st.session_state.chat_history.append({
-                        "title": title,
-                        "user_input": user_input,
-                        "response": reply
+                        "user": user_input,
+                        "gemini": reply
                     })
-                    st.session_state.selected_chat = len(st.session_state.chat_history) - 1
+
+                    # 清除輸入框內容
+                    st.session_state.new_input = ""
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
-
-    # ====== 側邊欄：聊天主題清單 ======
-    with st.sidebar:
-        st.markdown("---")
-        st.header("🗂️ 聊天紀錄")
-
-        for idx, chat in enumerate(st.session_state.chat_history):
-            if st.button(chat["title"], key=f"chat_{idx}"):
-                st.session_state.selected_chat = idx
-
-        if st.button("🧹 清除所有聊天紀錄"):
-            st.session_state.chat_history = []
-            st.session_state.selected_chat = None
-
-    # ====== 主畫面：顯示選定對話 ======
-    if st.session_state.selected_chat is not None:
-        chat = st.session_state.chat_history[st.session_state.selected_chat]
-        st.subheader("👤 使用者問題")
-        st.info(chat["user_input"])
-        st.subheader("🤖 Gemini 回應")
-        st.success(chat["response"])
