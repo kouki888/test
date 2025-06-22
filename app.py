@@ -93,7 +93,6 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-# ====== 功能 2: Gemini 聊天機器人（保留對話歷史） ======
 elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將回應你，並建立主題以延續對話。")
@@ -101,9 +100,8 @@ elif app_mode == "🤖 Gemini 聊天機器人":
     # 初始化聊天主題與記錄
     if "topics" not in st.session_state:
         st.session_state.topics = {}  # { 主題名稱: chat_obj }
+    if "active_topic" not in st.session_state:
         st.session_state.active_topic = None
-    if "input_text" not in st.session_state:
-        st.session_state.input_text = ""
 
     # ====== 側邊欄主題清單 ======
     with st.sidebar:
@@ -116,41 +114,40 @@ elif app_mode == "🤖 Gemini 聊天機器人":
             st.session_state.active_topic = None
             st.success("✅ 已清空所有主題與對話。")
 
-    # ====== 使用者輸入框 ======
-    st.text_input("✏️ 請輸入你的問題", key="input_text", on_change=lambda: st.session_state.update({"submitted": True}))
+    # ====== 使用者輸入框與送出按鈕 ======
+    user_input = st.text_input("✏️ 請輸入你的問題")
+    submitted = st.button("🚀 送出")
 
-    # 當使用者按 Enter 後執行
-    if st.session_state.get("submitted", False):
-        user_input = st.session_state.input_text.strip()
-        st.session_state.submitted = False  # 重置狀態
-        st.session_state.input_text = ""  # 清空輸入框
+    # ====== 使用者送出訊息 ======
+    if submitted and user_input.strip():
+        # 自動建立主題
+        topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
 
-        if submitted and user_input.strip():
-        # 建立主題名稱
-            topic_title = user_input[:20] + "..." if len(user_input) > 20 else user_input
+        # 若該主題不存在則建立 chat
+        if topic_title not in st.session_state.topics:
+            model = genai.GenerativeModel("models/gemini-1.5-flash")
+            chat = model.start_chat(history=[])
+            st.session_state.topics[topic_title] = chat
 
-    # 建立 chat session if not exists
-    if topic_title not in st.session_state.topics:
-        model = genai.GenerativeModel("models/gemini-1.5-flash")
-        chat = model.start_chat(history=[])
-        st.session_state.topics[topic_title] = chat
+        # 設為目前主題
+        st.session_state.active_topic = topic_title
+        chat = st.session_state.topics[topic_title]
 
-    st.session_state.active_topic = topic_title
-    chat = st.session_state.topics[topic_title]
+        # Gemini 回覆
+        with st.spinner("Gemini 正在生成回應..."):
+            try:
+                response = chat.send_message(user_input, stream=True)
+                full_response = ""
+                for chunk in response:
+                    if chunk.text:
+                        full_response += chunk.text
+                st.success("✅ Gemini 回應：")
+                st.markdown(f"<div style='white-space: pre-wrap;'>{full_response}</div>", unsafe_allow_html=True)
 
-    with st.spinner("Gemini 正在生成回應..."):
-        try:
-            response = chat.send_message(user_input, stream=True)
-            full_response = ""
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
+            except Exception as e:
+                st.error(f"❌ 發生錯誤：{e}")
 
-        except Exception as e:
-            st.error(f"❌ 發生錯誤：{e}")
-
-
-    # ====== 顯示對話內容（持續對話） ======
+    # ====== 顯示對話歷程 ======
     if st.session_state.active_topic:
         chat = st.session_state.topics[st.session_state.active_topic]
         st.markdown(f"### 🧠 主題：**{st.session_state.active_topic}**")
