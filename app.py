@@ -85,11 +85,9 @@ elif app_mode == "🤖 Gemini 聊天機器人":
 
     # 初始化聊天記憶
     if "topics" not in st.session_state:
-        st.session_state.topics = {}  # { hash_key: chat_obj }
+        st.session_state.topics = {}  # { hash_key: { chat, title, response_text } }
     if "active_topic" not in st.session_state:
         st.session_state.active_topic = None
-    if "topic_titles" not in st.session_state:
-        st.session_state.topic_titles = {}  # { hash_key: readable_title }
 
     # 使用者輸入區
     user_input = st.text_input("✏️ 請輸入你的問題")
@@ -100,46 +98,58 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         topic_hash = hashlib.md5(user_input_clean.encode()).hexdigest()
         topic_title = user_input_clean[:20] + "..." if len(user_input_clean) > 20 else user_input_clean
 
-        # 建立或切換主題
+        # 若為新主題，則建立 chat 並儲存
         if topic_hash not in st.session_state.topics:
             model = genai.GenerativeModel("models/gemini-1.5-flash")
             chat = model.start_chat(history=[])
-            st.session_state.topics[topic_hash] = chat
-            st.session_state.topic_titles[topic_hash] = topic_title
+            st.session_state.topics[topic_hash] = {
+                "chat": chat,
+                "title": topic_title,
+                "response_text": None
+            }
 
+        # 設定為目前主題
         st.session_state.active_topic = topic_hash
-        chat = st.session_state.topics[topic_hash]
+        topic_obj = st.session_state.topics[topic_hash]
+        chat = topic_obj["chat"]
 
-        # 發送訊息與回覆
-        with st.spinner("💬 Gemini 正在思考中..."):
-            try:
-                response = chat.send_message(user_input_clean, stream=True)
-                full_response = ""
-                for chunk in response:
-                    if chunk.text:
-                        full_response += chunk.text
-                st.success("✅ Gemini 回應：")
-                st.markdown(f"<div style='white-space: pre-wrap;'>{full_response}</div>", unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"❌ 發生錯誤：{e}")
+        # 如果還沒回應過，就送出問題並儲存回應
+        if topic_obj["response_text"] is None:
+            with st.spinner("💬 Gemini 正在思考中..."):
+                try:
+                    response = chat.send_message(user_input_clean, stream=True)
+                    full_response = ""
+                    for chunk in response:
+                        if chunk.text:
+                            full_response += chunk.text
+
+                    topic_obj["response_text"] = full_response  # 儲存回應文字
+                    st.success("✅ Gemini 回應：")
+                    st.markdown(f"<div style='white-space: pre-wrap;'>{full_response}</div>", unsafe_allow_html=True)
+
+                except Exception as e:
+                    st.error(f"❌ 發生錯誤：{e}")
+        else:
+            st.info("ℹ️ 此主題已產生回應，請查看下方對話紀錄。")
 
     # 側邊欄主題選單
     with st.sidebar:
         st.subheader("🗂️ 你的聊天主題")
-        for topic_hash, title in st.session_state.topic_titles.items():
-            if st.button(title, key=topic_hash):
+        for topic_hash, topic_data in st.session_state.topics.items():
+            if st.button(topic_data["title"], key=topic_hash):
                 st.session_state.active_topic = topic_hash
 
         if st.button("🧹 清空所有主題"):
             st.session_state.topics = {}
-            st.session_state.topic_titles = {}
             st.session_state.active_topic = None
             st.success("✅ 已清空所有主題與對話。")
 
     # 顯示對話紀錄
     if st.session_state.active_topic:
-        chat = st.session_state.topics[st.session_state.active_topic]
-        title = st.session_state.topic_titles[st.session_state.active_topic]
+        topic_obj = st.session_state.topics[st.session_state.active_topic]
+        chat = topic_obj["chat"]
+        title = topic_obj["title"]
+
         st.markdown(f"### 🧠 主題：**{title}**")
         for msg in chat.history:
             role = msg.role
@@ -148,3 +158,4 @@ elif app_mode == "🤖 Gemini 聊天機器人":
                 st.markdown(f"🧑‍💬 **你：** {text}")
             else:
                 st.markdown(f"🤖 **Gemini：** {text}")
+
