@@ -78,20 +78,25 @@ if app_mode == "📊 資料集分析":
     else:
         st.warning("📌 請上傳一個 `.csv` 檔案。")
 
-# ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
-app_mode = "🤖 Gemini 聊天機器人"  # 假設你控制頁面的變數
+import streamlit as st
+import google.generativeai as genai
+from datetime import datetime
 
-if app_mode == "🤖 Gemini 聊天機器人":
+# 設定 Gemini API 金鑰（請替換為你自己的）
+genai.configure(api_key="你的_API_KEY")
+
+# ====== 🤖 功能 2：Gemini 聊天機器人（可連續聊天） ======
+elif app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入問題，Gemini 將會持續與你對話。")
 
     # 初始化對話狀態
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []  # 所有對話
+        st.session_state.chat_history = []
     if "chat_title" not in st.session_state:
-        st.session_state.chat_title = None  # 主題名稱
+        st.session_state.chat_title = None
 
-    # ====== 側邊欄：主題列表與清除按鈕 ======
+    # ====== 側邊欄：主題列表 ======
     with st.sidebar:
         st.markdown("---")
         st.header("🗂️ 對話主題")
@@ -103,11 +108,11 @@ if app_mode == "🤖 Gemini 聊天機器人":
             st.session_state.chat_title = None
             st.experimental_rerun()
 
-        if st.button("🧯 強制清除紀錄（修復錯誤）"):
+        if st.button("🧯 強制清除（修復錯誤）"):
             st.session_state.clear()
             st.experimental_rerun()
 
-    # 顯示對話歷史（防錯）
+    # ====== 顯示對話歷史 ======
     for chat in st.session_state.chat_history:
         user_msg = chat.get("user", "（無使用者訊息）")
         gemini_reply = chat.get("gemini", "（無 Gemini 回應）")
@@ -130,7 +135,7 @@ if app_mode == "🤖 Gemini 聊天機器人":
                     response = model.generate_content(user_input)
                     reply = response.text.strip()
 
-                    # 第一次輸入時建立對話主題（用 user + reply 更準確）
+                    # 產生主題（第一次）
                     if not st.session_state.chat_title:
                         title_prompt = f"請用不超過10個中文字為這段對話取一個主題：\n使用者：{user_input}\nGemini：{reply}"
                         title_resp = model.generate_content(title_prompt)
@@ -144,9 +149,10 @@ if app_mode == "🤖 Gemini 聊天機器人":
                         "timestamp": datetime.now().isoformat()
                     })
 
-                    # 清除輸入框
+                    # 清空輸入框並更新畫面
                     st.session_state.new_input = ""
                     st.experimental_rerun()
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
+
