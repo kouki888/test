@@ -102,10 +102,6 @@ elif app_mode == "🤖 Gemini 聊天機器人":
             st.session_state.chat_title = None
             st.experimental_rerun()
 
-        if st.button("🧯 強制清除（修復錯誤）"):
-            st.session_state.clear()
-            st.experimental_rerun()
-
     # ====== 顯示對話歷史 ======
     for chat in st.session_state.chat_history:
         user_msg = chat.get("user", "（無使用者訊息）")
