@@ -4,12 +4,15 @@ import google.generativeai as genai
 from PIL import Image
 import requests
 import hashlib
+from dotenv import load_dotenv
+import os
 
 # ====== 頁面設定 ======
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
 # ====== API 金鑰設定 ======
-genai.configure(api_key="AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w")  # 🚨 請替換為你自己的金鑰
+load_dotenv()
+print(os.getenv("API_KEY"))
 
 # ====== 🔒 側邊欄選單 ======
 with st.sidebar:
