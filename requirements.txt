@@ -1,7 +1,7 @@
 streamlit
-python.dotenv
-googl.generativeai
 pandas
-plotly
+pillow
+google-generativeai
+python-dotenv
 chardet
 scikit-learn
