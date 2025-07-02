@@ -1,11 +1,14 @@
 import streamlit as st
+import pandas as pd
+import chardet
+import plotly.express as px
+from sklearn.preprocessing import LabelEncoder
 import google.generativeai as genai
+from dotenv import load_dotenv
 import os
-from dotenv import load_dotenv  # ← 加上這行
+import io
 
-# ===== 頁面設定 =====
-st.set_page_config(page_title="💬 Gemini 對話介面", page_icon="🤖")
-
+# ===== 載入 .env 檔案 =====
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -17,26 +20,26 @@ if not API_KEY:
 # ===== 設定 Gemini API 金鑰 =====
 genai.configure(api_key=API_KEY)
 
-# ===== 網頁標題與說明 =====
-st.title("🤖 Gemini Chatbot")
-st.markdown("請輸入任何問題，Gemini 將會回應你。")
+# ===== 頁面設定 =====
+st.set_page_config(page_title="📊 Gemini Chatbot + Data App", page_icon="🤖")
 
-# ===== 使用者輸入 =====
+# ===== 介面說明 =====
+st.title("🤖 Gemini Chatbot with Streamlit")
+st.markdown("請輸入你的問題，Gemini 將會嘗試回應你。")
+
+# ===== 使用者輸入問題 =====
 user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=150)
 
-# ===== 回應區塊 =====
-if st.button("🚀 送出"):
+# ===== Gemini 回應區 =====
+if st.button("🚀 送出問題"):
     if user_input.strip() == "":
-        st.warning("請輸入問題後再送出。")
+        st.warning("請先輸入問題。")
     else:
-        with st.spinner("Gemini 正在生成回應..."):
+        with st.spinner("Gemini 正在思考中..."):
             try:
-                # 使用 Gemini 模型
                 model = genai.GenerativeModel("models/gemini-1.5-flash")
                 response = model.generate_content(user_input)
-
-                # 顯示回應
-                st.success("✅ Gemini 回應：")
+                st.success("✅ Gemini 回應如下：")
                 st.markdown(response.text)
             except Exception as e:
                 st.error(f"❌ 發生錯誤：{e}")
