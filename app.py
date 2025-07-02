@@ -11,6 +11,8 @@ import os
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
 # ====== API 金鑰設定 ======
+load_dotenv()
+api_key = os.getenv("API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 else:
