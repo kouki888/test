@@ -6,7 +6,8 @@ st.set_page_config(page_title="💬 Gemini 對話介面", page_icon="🤖")
 
 # ===== API 金鑰設定 =====
 # 🚨 替換為你自己的 Gemini API 金鑰
-genai.configure(api_key="AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w")
+load_dotenv()
+genai.configure(api_key=os.getenv("API_KEY"))
 
 # ===== 網頁標題與說明 =====
 st.title("🤖 Gemini Chatbot")
