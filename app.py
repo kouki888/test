@@ -9,7 +9,7 @@ import os
 import io
 
 # ====== 頁面設定 ======
-st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
+st.set_page_config(page_title="專題作業", page_icon="📊", layout="wide")
 
 # ====== 載入 API 金鑰 ======
 load_dotenv()
