@@ -1,18 +1,25 @@
 import streamlit as st
 import pandas as pd
+import chardet
+import plotly.express as px
+from sklearn.preprocessing import LabelEncoder
 import google.generativeai as genai
-from PIL import Image
-import requests
-import hashlib
 from dotenv import load_dotenv
 import os
+import io
 
 # ====== 頁面設定 ======
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
-# ====== API 金鑰設定 ======
+# ===== 載入 API 金鑰 =====
 load_dotenv()
-genai.configure(api_key=os.getenv("API_KEY"))
+API_KEY = os.getenv("GOOGLE_API_KEY")
+
+if not API_KEY:
+    st.error("❌ API 金鑰未設定，請確認 .env 檔案或環境變數")
+    st.stop()
+
+genai.configure(api_key=API_KEY)
 
 # ====== 🔒 側邊欄選單 ======
 with st.sidebar:
