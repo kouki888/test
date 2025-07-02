@@ -6,5 +6,4 @@ python-dotenv
 google.generativeai
 chardet
 scikit-learn
-streamlit python-dotenv google-generativeai pillow requests
-streamlit python-dotenv google-generativeai
+streamlit python-dotenv google-generativeai 
