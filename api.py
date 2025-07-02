@@ -6,9 +6,16 @@ from dotenv import load_dotenv  # ← 加上這行
 # ===== 頁面設定 =====
 st.set_page_config(page_title="💬 Gemini 對話介面", page_icon="🤖")
 
-# ===== 載入 .env 並設定 API 金鑰 =====
-load_dotenv()  # ← 載入 .env 檔案
-genai.configure(api_key=os.getenv("API_KEY"))
+load_dotenv()
+API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# ===== 檢查 API 金鑰是否存在 =====
+if not API_KEY:
+    st.error("❌ API 金鑰未設定，請確認 .env 檔案中是否包含 GOOGLE_API_KEY")
+    st.stop()
+
+# ===== 設定 Gemini API 金鑰 =====
+genai.configure(api_key=API_KEY)
 
 # ===== 網頁標題與說明 =====
 st.title("🤖 Gemini Chatbot")
