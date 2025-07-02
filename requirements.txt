@@ -1,5 +1,5 @@
 streamlit
-python-dotenv
+python.dotenv
 googl.generativeai
 pandas
 plotly
