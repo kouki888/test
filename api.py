@@ -29,3 +29,11 @@ if 'corr_dict' not in st.session_state:
     st.session_state['corr_dict'] = {}
 if 'has_data' not in st.session_state:
     st.session_state['has_data'] = False
+t.header("Gemini")
+    model = genai.GenerativeModel("models/gemini-1.5-flash")
+    chat = genai.ChatSession(model=model)
+
+    user_input = st.text_input("請輸入問題")
+    if user_input:
+        response = chat.send_message(user_input)
+        st.markdown(f"Gemini 回答: {response.text}")
