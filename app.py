@@ -106,30 +106,20 @@ elif app_mode == "🤖 Gemini 聊天機器人":
         elif len(user_input) > 1000:
             st.warning("⚠️ 輸入過長，請簡化你的問題（最多 1000 字元）。")
         else:
-            with st.spinner("Gemini 正在產生回應..."):
-                try:
-                    model = genai.GenerativeModel("models/gemini-1.5-flash")
-                    response = model.generate_content(user_input)
-                    reply = response.text.strip()
+            with st.spinner("Gemini 正在生成回應..."):
+    try:
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
+        response = model.generate_content(user_input)
+        reply = response.text.strip()
 
-                    title_prompt = f"請用不超過10個中文字為以下內容取一個簡短主題：\n{user_input}"
-                    try:
-                        title_resp = model.generate_content(title_prompt)
-                        title = title_resp.text.strip().split("\n")[0]
-                        if len(title) > 10:
-                            title = title[:10]
-                    except:
-                        title = "未命名主題"
+        if not reply:
+            st.error("⚠️ 沒有收到 Gemini 的回應，可能是 API 請求逾時或失敗。")
+        else:
+            # 儲存與顯示
+            ...
+    except Exception as e:
+        st.error(f"❌ 發生錯誤：{e}")
 
-                    st.session_state.chat_history.append({
-                        "title": title,
-                        "user_input": user_input,
-                        "response": reply
-                    })
-                    st.session_state.selected_chat = len(st.session_state.chat_history) - 1
-
-                except Exception as e:
-                    st.error(f"❌ 發生錯誤：{e}")
 
     with st.sidebar:
         st.markdown("---")
