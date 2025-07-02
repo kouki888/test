@@ -1,6 +1,6 @@
 streamlit
 python-dotenv
-google-generativeai
+googl.generativeai
 pandas
 plotly
 chardet
