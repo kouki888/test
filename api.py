@@ -20,16 +20,6 @@ if not API_KEY:
 # 設定 Gemini API
 genai.configure(api_key=API_KEY)
 
-# 初始化 Session State
-if 'df_raw_dict' not in st.session_state:
-    st.session_state['df_raw_dict'] = {}
-if 'df_dict' not in st.session_state:
-    st.session_state['df_dict'] = {}
-if 'corr_dict' not in st.session_state:
-    st.session_state['corr_dict'] = {}
-if 'has_data' not in st.session_state:
-    st.session_state['has_data'] = False
-
 app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
