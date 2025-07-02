@@ -3,7 +3,7 @@ pandas
 Pillow
 datetime
 python-dotenv
-google-generativeai
+google.generativeai
 chardet
 scikit-learn
 streamlit python-dotenv google-generativeai pillow requests
