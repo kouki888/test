@@ -29,11 +29,47 @@ if 'corr_dict' not in st.session_state:
     st.session_state['corr_dict'] = {}
 if 'has_data' not in st.session_state:
     st.session_state['has_data'] = False
-t.header("Gemini")
-    model = genai.GenerativeModel("models/gemini-1.5-flash")
-    chat = genai.ChatSession(model=model)
 
-    user_input = st.text_input("請輸入問題")
-    if user_input:
-        response = chat.send_message(user_input)
-        st.markdown(f"Gemini 回答: {response.text}")
+app_mode == "🤖 Gemini 聊天機器人":
+    st.title("🤖 Gemini Chatbot")
+    st.markdown("請輸入任何問題，Gemini 將會回應你。")
+
+    # ====== 初始化聊天狀態 ======
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "selected_chat" not in st.session_state:
+        st.session_state.selected_chat = None
+
+    # ====== 使用者輸入問題 ======
+    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
+
+    if st.button("🚀 送出"):
+        if user_input.strip() == "":
+            st.warning("請輸入問題後再送出。")
+        elif len(user_input) > 1000:
+            st.warning("⚠️ 輸入過長，請簡化你的問題（最多 1000 字元）。")
+        else:
+            with st.spinner("Gemini 正在生成回應..."):
+                try:
+                    # 建立模型
+                    model = genai.GenerativeModel("models/gemini-1.5-flash")
+
+                    # 回應內容
+                    response = model.generate_content(user_input)
+                    reply = response.text.strip()
+
+                    # 自動產生主題（限制 10 字內）
+                    title_prompt = f"請用不超過10個中文字為以下內容取一個簡短主題：\n{user_input}"
+                    title_resp = model.generate_content(title_prompt)
+                    title = title_resp.text.strip().split("\n")[0]
+
+                    # 加入對話紀錄
+                    st.session_state.chat_history.append({
+                        "title": title,
+                        "user_input": user_input,
+                        "response": reply
+                    })
+                    st.session_state.selected_chat = len(st.session_state.chat_history) - 1
+
+                except Exception as e:
+                    st.error(f"❌ 發生錯誤：{e}")
