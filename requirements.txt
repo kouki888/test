@@ -5,3 +5,4 @@ google.generativeai
 datetime
 dotenv
 streamlit python-dotenv google-generativeai pillow requests
+streamlit python-dotenv google-generativeai
