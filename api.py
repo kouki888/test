@@ -22,7 +22,7 @@ genai.configure(api_key=API_KEY)
 st.set_page_config(page_title="Gemini Chat App", page_icon="🤖")
 
 # ===== 側邊欄選單 =====
-app_mode = st.sidebar.selectbox("選擇功能模式", ["📈 資料分析", "🤖 Gemini 聊天機器人"])
+app_mode = st.sidebar.selectbox("選擇功能模式", ["🤖 Gemini 聊天機器人"])
 
 # ===== Gemini 聊天機器人 =====
 if app_mode == "🤖 Gemini 聊天機器人":
