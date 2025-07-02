@@ -11,8 +11,11 @@ import os
 st.set_page_config(page_title="專題作業一", page_icon="📊", layout="wide")
 
 # ====== API 金鑰設定 ======
-load_dotenv()
-genai.configure(api_key=os.getenv("API_KEY"))
+if api_key:
+    genai.configure(api_key=api_key)
+else:
+    st.error("找不到 API_KEY，請確認 .env 檔案存在並格式正確")
+    st.stop()
 
 # ====== 🔒 側邊欄選單 ======
 with st.sidebar:
