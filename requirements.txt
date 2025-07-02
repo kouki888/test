@@ -6,3 +6,5 @@ google.generativeai
 chardet
 scikit-learn
 streamlit python-dotenv google-generativeai 
+os
+io
