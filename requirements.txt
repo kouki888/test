@@ -1,7 +1,6 @@
 streamlit
 pandas
 Pillow
-google.generativeai
 datetime
 python-dotenv
 google-generativeai
