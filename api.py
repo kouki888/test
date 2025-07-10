@@ -25,42 +25,7 @@ st.set_page_config(page_title="Gemini Chat App", page_icon="🤖")
 app_mode = st.sidebar.selectbox("選擇功能模式", ["🤖 Gemini 聊天機器人"])
 
 # ===== Gemini 聊天機器人 =====
-if app_mode == "📊 資料集分析":
-    st.title("HW.1")
-    st.markdown("上傳一個 Kaggle 或其他來源的 `.csv` 檔案，進行資料預覽與簡易分析。")
-
-    uploaded_file = st.file_uploader("📤 上傳你的 CSV 檔案", type=["csv"])
-
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.success("✅ 成功載入資料！")
-
-            if show_preview:
-                tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
-
-                with tab1:
-                    st.subheader("🔍 預覽前幾列")
-                    st.dataframe(df.head(num_rows), use_container_width=True)
-
-                with tab2:
-                    st.subheader("📊 資料敘述統計")
-                    st.write(df.describe())
-
-                with tab3:
-                    st.subheader("🧩 欄位篩選器")
-                    column = st.selectbox("請選擇要顯示的欄位", df.columns)
-                    st.dataframe(df[[column]].head(num_rows), use_container_width=True)
-            else:
-                st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
-
-        except Exception as e:
-            st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
-    else:
-        st.warning("📌 請上傳一個 `.csv` 檔案。")
-
-# ====== 🤖 功能 2：Gemini 聊天機器人 ======
-elif app_mode == "🤖 Gemini 聊天機器人":
+iapp_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
