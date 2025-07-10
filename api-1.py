@@ -25,7 +25,7 @@ st.set_page_config(page_title="Gemini Chat App", page_icon="🤖")
 app_mode = st.sidebar.selectbox("選擇功能模式", ["🤖 Gemini 聊天機器人"])
 
 # ===== Gemini 聊天機器人 =====
-app_mode == "🤖 Gemini 聊天機器人":
+if app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
