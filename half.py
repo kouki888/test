@@ -109,4 +109,18 @@ if uploaded_file:
                                 use_container_width=True
                             )
 
-                    e
+                    elif chart_type == "散佈圖（Scatter Plot）":
+                        x_axis = st.selectbox("選擇數值欄位（X軸）", numeric_cols, index=0)
+                        color_col = st.selectbox("選擇分類欄位（顏色分組）", category_cols) if category_cols else None
+
+                        st.plotly_chart(
+                            px.scatter(df, x=x_axis, y=y_axis, color=color_col, title=f"{x_axis} vs {y_axis} 散佈圖"),
+                            use_container_width=True
+                        )
+        else:
+            st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
+
+    except Exception as e:
+        st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
+else:
+    st.warning("📌 請上傳一個 `.csv` 檔案。")
