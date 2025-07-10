@@ -48,7 +48,7 @@ if app_mode == "🤖 Gemini 聊天機器人":
             with st.spinner("Gemini 正在生成回應..."):
                 try:
                     # 建立模型
-                    model = genai.GenerativeModel("models/gemini-1.5-flash")
+                    model = genai.GenerativeModel("models/gemini-2.0-flash")
 
                     # 回應內容
                     response = model.generate_content(user_input)
