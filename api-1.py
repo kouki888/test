@@ -28,6 +28,7 @@ app_mode = st.sidebar.selectbox("選擇功能模式", ["🤖 Gemini 聊天機器
 if app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
+    ...
 
     # ====== 初始化聊天狀態 ======
     if "chat_history" not in st.session_state:
@@ -47,7 +48,7 @@ if app_mode == "🤖 Gemini 聊天機器人":
             with st.spinner("Gemini 正在生成回應..."):
                 try:
                     # 建立模型
-                    model = genai.GenerativeModel("models/gemini-1.5-flash")
+                    model = genai.GenerativeModel("models/gemini-2.0-flash")
 
                     # 回應內容
                     response = model.generate_content(user_input)
