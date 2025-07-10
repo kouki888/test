@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
+import chardet
+import plotly.express as px
+from sklearn.preprocessing import LabelEncoder
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+import io
 
 # ========== 載入 API 金鑰 ==========
 load_dotenv()
