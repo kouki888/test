@@ -70,23 +70,26 @@ if app_mode == "🤖 Gemini 聊天機器人":
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
-    # ====== 側邊欄：聊天主題清單 ======
-    with st.sidebar:
-        st.markdown("---")
-        st.header("🗂️ 聊天紀錄")
+    # ====== 側邊欄：聊天主題清單（使用按鈕）======
+with st.sidebar:
+    st.markdown("---")
+    st.header("🗂️ 聊天紀錄")
 
-        for idx, chat in enumerate(st.session_state.chat_history):
-            if st.button(chat["title"], key=f"chat_{idx}"):
-                st.session_state.selected_chat = idx
+    # 新對話按鈕（如果目前就是 new 就不顯示標記）
+    if st.button("🆕 新對話", key="new_topic_btn"):
+        st.session_state.current_topic = "new"
 
-        if st.button("🧹 清除所有聊天紀錄"):
-            st.session_state.chat_history = []
-            st.session_state.selected_chat = None
+    # 顯示所有主題按鈕
+    for tid in st.session_state.topic_ids:
+        title = st.session_state.conversations[tid]["title"]
+        # 加上 ✔️ 標記目前選中的主題
+        button_label = f"✔️ {title}" if tid == st.session_state.current_topic else title
+        if st.button(button_label, key=f"topic_{tid}"):
+            st.session_state.current_topic = tid
 
-    # ====== 主畫面：顯示選定對話 ======
-    if st.session_state.selected_chat is not None:
-        chat = st.session_state.chat_history[st.session_state.selected_chat]
-        st.subheader("👤 使用者問題")
-        st.info(chat["user_input"])
-        st.subheader("🤖 Gemini 回應")
-        st.success(chat["response"])
+    # 清除所有聊天
+    st.markdown("---")
+    if st.button("🧹 清除所有聊天紀錄"):
+        st.session_state.conversations = {}
+        st.session_state.topic_ids = []
+        st.session_state.current_topic = "new"
