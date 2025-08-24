@@ -6,3 +6,6 @@ python-dotenv
 chardet
 scikit-learn
 plotly.express
+folium
+streamlit-folium
+
