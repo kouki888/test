@@ -10,13 +10,19 @@ import google.generativeai as genai
 # 載入環境變數
 # ===============================
 load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY")
+OPENCAGE_KEY = os.getenv("OPENCAGE_API_KEY")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-if not API_KEY:
-    st.error("❌ 請先設定環境變數 API_KEY")
+if not OPENCAGE_KEY:
+    st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
     st.stop()
 
-genai.configure(api_key=GOOGLE_API_KEY)
+if not GEMINI_KEY:
+    st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
+    st.stop()
+
+# 設定 Gemini API
+genai.configure(api_key=GEMINI_KEY)
 
 # ===============================
 # 支援查詢的 OSM Tags
@@ -150,5 +156,3 @@ if st.button("比較房屋"):
     folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
     folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
     st_folium(m, width=700, height=500)
-
-
