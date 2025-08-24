@@ -1,151 +1,156 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
+import requests
+import folium
+import os
+from dotenv import load_dotenv
+from streamlit_folium import st_folium
+import google.generativeai as genai
 
-# ====== 頁面設定 ======
-st.set_page_config(page_title="📊 資料集分析工具", page_icon="📁", layout="wide")
+# ===============================
+# 載入環境變數
+# ===============================
+load_dotenv()
+OPENCAGE_KEY = os.getenv("OPENCAGE_API_KEY")
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-# ====== 🔒 側邊選單 ======
-with st.sidebar:
-    st.header("🔧 設定選單")
+if not OPENCAGE_KEY:
+    st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
+    st.stop()
+if not GEMINI_KEY:
+    st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
+    st.stop()
 
-    with st.container():
-        st.markdown('<div class="theme-select-box">', unsafe_allow_html=True)
-        theme = st.selectbox("🎨 選擇主題色", ["淺色", "深色"], key="theme_select")
-        st.markdown('</div>', unsafe_allow_html=True)
+genai.configure(api_key=GEMINI_KEY)
 
-    show_preview = st.checkbox("顯示資料預覽", value=True)
-    num_rows = st.slider("顯示幾列資料", min_value=5, max_value=100, value=10)
-    st.markdown("---")
-    st.info("請上傳 CSV 檔案。")
+# ===============================
+# 支援查詢的 OSM Tags
+# ===============================
+OSM_TAGS = {
+    "交通": '["public_transport"="stop_position"]',
+    "超商": '["shop"="convenience"]',
+    "餐廳": '["amenity"="restaurant"]',
+    "學校": '["amenity"="school"]',
+    "醫院": '["amenity"="hospital"]',
+    "藥局": '["amenity"="pharmacy"]'
+}
 
-# ====== 主題樣式切換 ======
-if theme == "深色":
-    st.markdown("""
-        <style>
-        .stApp { background-color: #000000; color: white; }
-        section[data-testid="stSidebar"] { background-color: #111111; color: white; }
-        h1, h2, h3, h4, h5, h6, p { color: white !important; }
-        .dataframe th, .dataframe td { color: white !important; }
-        .theme-select-box .stSelectbox,
-        .theme-select-box .stSelectbox > div {
-            background-color: white !important;
-            color: black !important;
-            border: 1px solid #ddd !important;
-            border-radius: 5px !important;
-        }
-        .theme-select-box label {
-            color: black !important;
-        }
-        .theme-select-box [data-baseweb="select"],
-        .theme-select-box [data-baseweb="select"] * {
-            background-color: white !important;
-            color: black !important;
-        }
-        .theme-select-box [data-baseweb="select"] div:hover {
-            background-color: #f0f0f0 !important;
-            color: black !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <style>
-        .stApp { background-color: #ffffff; color: black; }
-        section[data-testid="stSidebar"] { background-color: #f0f2f6; color: black; }
-        </style>
-    """, unsafe_allow_html=True)
-
-# ====== 主頁面內容 ======
-st.title("📁 公開資料集上傳與分析")
-st.markdown("上傳一個 Kaggle 或其他來源的 `.csv` 檔案，進行資料預覽與圖表分析。")
-
-# ====== 上傳檔案 ======
-uploaded_file = st.file_uploader("📤 上傳你的 CSV 檔案", type=["csv"])
-
-if uploaded_file:
+# ===============================
+# 工具函式
+# ===============================
+def geocode_address(address: str):
+    """利用 OpenCage 把地址轉成經緯度"""
+    url = "https://api.opencagedata.com/geocode/v1/json"
+    params = {"q": address, "key": OPENCAGE_KEY, "language": "zh-TW", "limit": 1}
     try:
-        df = pd.read_csv(uploaded_file)
-        st.success("✅ 成功載入資料！")
-
-        if show_preview:
-            # 顯示四個頁籤
-            tab1, tab2, tab3, tab4 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選", "📈 圖表分析"])
-
-            with tab1:
-                st.subheader("🔍 預覽前幾列")
-                st.dataframe(df.head(num_rows), use_container_width=True)
-
-            with tab2:
-                st.subheader("📊 資料敘述統計")
-                st.write(df.describe())
-
-            with tab3:
-                st.subheader("🧩 欄位篩選器")
-                column = st.selectbox("請選擇要顯示的欄位", df.columns)
-                st.dataframe(df[[column]].head(num_rows), use_container_width=True)
-
-            with tab4:
-                st.subheader("📈 圖表分析工具")
-
-                chart_type = st.selectbox("請選擇圖表類型", [
-                    "長條圖（Bar Chart）", "散佈圖（Scatter Plot）", "折線圖（Line Chart）",
-                    "箱型圖（Box Plot）", "直方圖（Histogram）", "熱力圖（Heatmap）"
-                ])
-
-                numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
-                category_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
-
-                if not numeric_cols:
-                    st.warning("❗ 資料中沒有數值欄位可用於圖表分析。")
-                else:
-                    if chart_type == "長條圖（Bar Chart）":
-                        if not category_cols:
-                            st.warning("❗ 資料中沒有類別欄位可用作 X 軸。")
-                        else:
-                            x_axis = st.selectbox("選擇分類欄位（X軸）", category_cols)
-                            y_axis = st.selectbox("選擇數值欄位（Y軸）", numeric_cols)
-                            chart_df = df.groupby(x_axis)[y_axis].mean().reset_index()
-                            fig = px.bar(chart_df, x=x_axis, y=y_axis, title=f"{x_axis} vs {y_axis} 平均值")
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    elif chart_type == "散佈圖（Scatter Plot）":
-                        x_axis = st.selectbox("選擇 X 軸（數值欄位）", numeric_cols)
-                        y_axis = st.selectbox("選擇 Y 軸（數值欄位）", numeric_cols, index=1 if len(numeric_cols) > 1 else 0)
-                        color = st.selectbox("選擇分類欄位（顏色分組）", category_cols) if category_cols else None
-                        fig = px.scatter(df, x=x_axis, y=y_axis, color=color, title=f"{x_axis} vs {y_axis} 散佈圖")
-                        st.plotly_chart(fig, use_container_width=True)
-
-                    elif chart_type == "折線圖（Line Chart）":
-                        if not category_cols:
-                            st.warning("❗ 無分類欄位可當 X 軸")
-                        else:
-                            x_axis = st.selectbox("選擇分類欄位（X軸）", category_cols)
-                            y_axis = st.selectbox("選擇數值欄位（Y軸）", numeric_cols)
-                            fig = px.line(df, x=x_axis, y=y_axis, title=f"{x_axis} - {y_axis} 折線圖")
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    elif chart_type == "箱型圖（Box Plot）":
-                        if not category_cols:
-                            st.warning("❗ 需要分類欄位當 X 軸")
-                        else:
-                            x_axis = st.selectbox("選擇分類欄位（X軸）", category_cols)
-                            y_axis = st.selectbox("選擇數值欄位（Y軸）", numeric_cols)
-                            fig = px.box(df, x=x_axis, y=y_axis, title=f"{x_axis} - {y_axis} 箱型圖")
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    elif chart_type == "直方圖（Histogram）":
-                        y_axis = st.selectbox("選擇數值欄位", numeric_cols)
-                        fig = px.histogram(df, x=y_axis, nbins=30, title=f"{y_axis} 直方圖")
-                        st.plotly_chart(fig, use_container_width=True)
-
-                    elif chart_type == "熱力圖（Heatmap）":
-                        corr = df[numeric_cols].corr()
-                        fig = px.imshow(corr, text_auto=True, title="數值欄位相關係數熱力圖", color_continuous_scale='Viridis')
-                        st.plotly_chart(fig, use_container_width=True)
+        res = requests.get(url, params=params, timeout=10).json()
+        if res["results"]:
+            return res["results"][0]["geometry"]["lat"], res["results"][0]["geometry"]["lng"]
         else:
-            st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
-    except Exception as e:
-        st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
-else:
-    st.warning("📌 請上傳一個 `.csv` 檔案。")
+            return None, None
+    except Exception:
+        return None, None
+
+
+def query_osm(lat, lng):
+    """查詢某座標 400 公尺內的地點"""
+    results = {}
+    for tag_name, tag in OSM_TAGS.items():
+        query = f"""
+        [out:json];
+        (
+          node{tag}(around:400,{lat},{lng});
+          way{tag}(around:400,{lat},{lng});
+          relation{tag}(around:400,{lat},{lng});
+        );
+        out center;
+        """
+        try:
+            r = requests.post("https://overpass-api.de/api/interpreter", data=query.encode("utf-8"), timeout=20)
+            data = r.json()
+        except:
+            continue
+
+        places = []
+        for el in data.get("elements", []):
+            if "lat" in el and "lon" in el:
+                lat_el, lon_el = el["lat"], el["lon"]
+            elif "center" in el:
+                lat_el, lon_el = el["center"]["lat"], el["center"]["lon"]
+            else:
+                continue
+            name = el.get("tags", {}).get("name", "未命名")
+            places.append(name)
+        results[tag_name] = places
+    return results
+
+
+def format_info(address, info_dict):
+    """把查詢結果整理成文字"""
+    lines = [f"房屋（{address}）："]
+    for k, v in info_dict.items():
+        if v:
+            lines.append(f"- {k}: {len(v)} 個 ({'、'.join(v[:5])}{'…' if len(v) > 5 else ''})")
+        else:
+            lines.append(f"- {k}: 無")
+    return "\n".join(lines)
+
+
+# ===============================
+# Streamlit UI
+# ===============================
+st.title("🏠 房屋比較助手 (OSM + OpenCage + Gemini)")
+
+col1, col2 = st.columns(2)
+with col1:
+    addr_a = st.text_input("輸入房屋 A 地址")
+with col2:
+    addr_b = st.text_input("輸入房屋 B 地址")
+
+if st.button("比較房屋"):
+    if not addr_a or not addr_b:
+        st.warning("請輸入兩個地址")
+        st.stop()
+
+    # 1️⃣ Geocode
+    lat_a, lng_a = geocode_address(addr_a)
+    lat_b, lng_b = geocode_address(addr_b)
+    if not lat_a or not lat_b:
+        st.error("❌ 無法解析其中一個地址")
+        st.stop()
+
+    # 2️⃣ OSM 查詢
+    info_a = query_osm(lat_a, lng_a)
+    info_b = query_osm(lat_b, lng_b)
+
+    text_a = format_info(addr_a, info_a)
+    text_b = format_info(addr_b, info_b)
+
+    # 3️⃣ Gemini 比較
+    prompt = f"""
+    你是一位房地產分析專家，請比較以下兩間房屋的生活機能，列出優點與缺點，最後做總結：
+
+    {text_a}
+
+    {text_b}
+    """
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+
+    # 4️⃣ 顯示結果
+    st.subheader("📊 Gemini 分析結果")
+    st.write(response.text)
+
+    # 左右對照
+    st.subheader("🏠 房屋資訊對照表")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"### 房屋 A\n{text_a}")
+    with c2:
+        st.markdown(f"### 房屋 B\n{text_b}")
+
+    # 5️⃣ 地圖顯示
+    st.subheader("🗺️ 地圖")
+    m = folium.Map(location=[(lat_a+lat_b)/2, (lng_a+lng_b)/2], zoom_start=15)
+    folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
+    folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
+    st_folium(m, width=700, height=500)
