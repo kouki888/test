@@ -97,12 +97,6 @@ def format_info(address, info_dict):
         lines.append(f"- {k}: {len(v)} 個")
     return "\n".join(lines)
 
-
-# ===============================
-# Streamlit UI
-# ===============================
-st.title("🏠 房屋比較助手 + 💬 簡單對話框")
-
 # -------- 房屋比較助手 --------
 st.header("🏠 房屋比較")
 col1, col2 = st.columns(2)
@@ -114,46 +108,45 @@ with col2:
 if st.button("比較房屋"):
     if not addr_a or not addr_b:
         st.warning("請輸入兩個地址")
-        st.stop()
+    else:
+        lat_a, lng_a = geocode_address(addr_a)
+        lat_b, lng_b = geocode_address(addr_b)
+        if not lat_a or not lat_b:
+            st.error("❌ 無法解析其中一個地址")
+        else:
+            info_a = query_osm(lat_a, lng_a, radius=200)
+            info_b = query_osm(lat_b, lng_b, radius=200)
 
-    lat_a, lng_a = geocode_address(addr_a)
-    lat_b, lng_b = geocode_address(addr_b)
-    if not lat_a or not lat_b:
-        st.error("❌ 無法解析其中一個地址")
-        st.stop()
+            text_a = format_info(addr_a, info_a)
+            text_b = format_info(addr_b, info_b)
 
-    info_a = query_osm(lat_a, lng_a, radius=200)
-    info_b = query_osm(lat_b, lng_b, radius=200)
+            prompt = f"""
+            你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
+            請列出優點與缺點，最後做總結：
 
-    text_a = format_info(addr_a, info_a)
-    text_b = format_info(addr_b, info_b)
+            {text_a}
 
-    prompt = f"""
-    你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
-    請列出優點與缺點，最後做總結：
+            {text_b}
+            """
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(prompt)
 
-    {text_a}
+            st.subheader("📊 Gemini 分析結果")
+            st.write(response.text)
 
-    {text_b}
-    """
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
+            st.subheader("🏠 房屋資訊對照表")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown(f"### 房屋 A\n{text_a}")
+            with c2:
+                st.markdown(f"### 房屋 B\n{text_b}")
 
-    st.subheader("📊 Gemini 分析結果")
-    st.write(response.text)
+            st.subheader("🗺️ 地圖")
+            m = folium.Map(location=[(lat_a+lat_b)/2, (lng_a+lng_b)/2], zoom_start=15)
+            folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
+            folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
+            st_folium(m, width=700, height=500)
 
-    st.subheader("🏠 房屋資訊對照表")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"### 房屋 A\n{text_a}")
-    with c2:
-        st.markdown(f"### 房屋 B\n{text_b}")
-
-    st.subheader("🗺️ 地圖")
-    m = folium.Map(location=[(lat_a+lat_b)/2, (lng_a+lng_b)/2], zoom_start=15)
-    folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
-    folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
-    st_folium(m, width=700, height=500)
 
 # -------- 簡單對話框 --------
 st.header("💬 簡單對話框")
@@ -164,4 +157,3 @@ with st.form("user_input_form", clear_on_submit=True):
 
 if submitted and user_input:
     st.write("👤 使用者輸入：", user_input)
-
