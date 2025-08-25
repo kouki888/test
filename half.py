@@ -135,7 +135,7 @@ if st.button("比較房屋"):
 
     {text_b}
     """
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
 
     # 4️⃣ 顯示結果
@@ -149,5 +149,6 @@ if st.button("比較房屋"):
         st.markdown(f"### 房屋 A\n{text_a}")
     with c2:
         st.markdown(f"### 房屋 B\n{text_b}")
+
 
 
