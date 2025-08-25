@@ -155,7 +155,6 @@ if st.button("比較房屋"):
     folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
     st_folium(m, width=700, height=500)
 
-
 # -------- 簡單對話框 --------
 st.header("💬 簡單對話框")
 
@@ -165,3 +164,4 @@ with st.form("user_input_form", clear_on_submit=True):
 
 if submitted and user_input:
     st.write("👤 使用者輸入：", user_input)
+
