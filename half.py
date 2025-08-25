@@ -15,14 +15,13 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if not OPENCAGE_KEY:
     st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
-    st.stop()
 
 if not GEMINI_KEY:
     st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
-    st.stop()
 
 # 設定 Gemini API
-genai.configure(api_key=GEMINI_KEY)
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
 
 # ===============================
 # 支援查詢的 OSM Tags
@@ -47,10 +46,9 @@ def geocode_address(address: str):
         res = requests.get(url, params=params, timeout=10).json()
         if res["results"]:
             return res["results"][0]["geometry"]["lat"], res["results"][0]["geometry"]["lng"]
-        else:
-            return None, None
     except Exception:
-        return None, None
+        pass
+    return None, None
 
 
 def query_osm(lat, lng, radius=200):
@@ -97,6 +95,12 @@ def format_info(address, info_dict):
         lines.append(f"- {k}: {len(v)} 個")
     return "\n".join(lines)
 
+
+# ===============================
+# Streamlit UI
+# ===============================
+st.title("🏠 房屋比較助手 + 💬 簡單對話框")
+
 # -------- 房屋比較助手 --------
 st.header("🏠 房屋比較")
 col1, col2 = st.columns(2)
@@ -111,6 +115,7 @@ if st.button("比較房屋"):
     else:
         lat_a, lng_a = geocode_address(addr_a)
         lat_b, lng_b = geocode_address(addr_b)
+
         if not lat_a or not lat_b:
             st.error("❌ 無法解析其中一個地址")
         else:
@@ -120,19 +125,20 @@ if st.button("比較房屋"):
             text_a = format_info(addr_a, info_a)
             text_b = format_info(addr_b, info_b)
 
-            prompt = f"""
-            你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
-            請列出優點與缺點，最後做總結：
+            if GEMINI_KEY:
+                prompt = f"""
+                你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
+                請列出優點與缺點，最後做總結：
 
-            {text_a}
+                {text_a}
 
-            {text_b}
-            """
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content(prompt)
+                {text_b}
+                """
+                model = genai.GenerativeModel("gemini-2.0-flash")
+                response = model.generate_content(prompt)
 
-            st.subheader("📊 Gemini 分析結果")
-            st.write(response.text)
+                st.subheader("📊 Gemini 分析結果")
+                st.write(response.text)
 
             st.subheader("🏠 房屋資訊對照表")
             c1, c2 = st.columns(2)
@@ -146,7 +152,6 @@ if st.button("比較房屋"):
             folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
             folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
             st_folium(m, width=700, height=500)
-
 
 # -------- 簡單對話框 --------
 st.header("💬 簡單對話框")
