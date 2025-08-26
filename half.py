@@ -109,6 +109,12 @@ with col1:
 with col2:
     addr_b = st.text_input("輸入房屋 B 地址")
 
+# 初始化狀態
+if "comparison_done" not in st.session_state:
+    st.session_state["comparison_done"] = False
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
 if st.button("比較房屋"):
     if not addr_a or not addr_b:
         st.warning("請輸入兩個地址")
@@ -153,12 +159,27 @@ if st.button("比較房屋"):
             folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
             st_folium(m, width=700, height=500)
 
-# -------- 簡單對話框 --------
-st.header("💬 簡單對話框")
+            # ✅ 標記比較已完成
+            st.session_state["comparison_done"] = True
 
-with st.form("user_input_form", clear_on_submit=True):
-    user_input = st.text_input("你想問什麼？", placeholder="請輸入問題...")
-    submitted = st.form_submit_button("🚀 送出")
 
-if submitted and user_input:
-    st.write("👤 使用者輸入：", user_input)
+# -------- 簡單對話框（比較完成後才出現） --------
+if st.session_state["comparison_done"]:
+    st.header("💬 簡單對話框")
+
+    with st.form("user_input_form", clear_on_submit=True):
+        user_input = st.text_input("你想問什麼？", placeholder="請輸入問題...")
+        submitted = st.form_submit_button("🚀 送出")
+
+    if submitted and user_input:
+        # 加入使用者輸入
+        st.session_state["chat_history"].append(("👤", user_input))
+
+        if GEMINI_KEY:
+            model = genai.GenerativeModel("gemini-2.0-flash")
+            response = model.generate_content(user_input)
+            st.session_state["chat_history"].append(("🤖", response.text))
+
+    # 顯示對話紀錄
+    for role, msg in st.session_state["chat_history"]:
+        st.markdown(f"**{role}**：{msg}")
