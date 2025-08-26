@@ -109,6 +109,10 @@ if "comparison_done" not in st.session_state:
     st.session_state["comparison_done"] = False
 if "chat_history" not in st.session_state:
     st.session_state["chat_history"] = []
+if "text_a" not in st.session_state:
+    st.session_state["text_a"] = ""
+if "text_b" not in st.session_state:
+    st.session_state["text_b"] = ""
 
 col1, col2 = st.columns(2)
 with col1:
@@ -133,6 +137,10 @@ if st.button("比較房屋"):
     text_a = format_info(addr_a, info_a)
     text_b = format_info(addr_b, info_b)
 
+    # 儲存資訊給聊天使用
+    st.session_state["text_a"] = text_a
+    st.session_state["text_b"] = text_b
+
     prompt = f"""
     你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
     請列出優點與缺點，最後做總結：
@@ -153,12 +161,11 @@ if st.button("比較房屋"):
         st.markdown(f"### 房屋 A\n{text_a}")
         st.markdown(f"### 房屋 B\n{text_b}")
 
-    # 標記比較完成
     st.session_state["comparison_done"] = True
 
 
 # ===============================
-# 簡單對話框（比較完成後才出現）
+# 簡單對話框（結合地點資訊）
 # ===============================
 if st.session_state["comparison_done"]:
     st.header("💬 簡單對話框")
@@ -170,8 +177,21 @@ if st.session_state["comparison_done"]:
     if submitted and user_input:
         st.session_state["chat_history"].append(("👤", user_input))
 
+        # ✅ 把房屋資訊帶進 Prompt
+        chat_prompt = f"""
+        以下是兩間房屋的周邊資訊：
+
+        {st.session_state['text_a']}
+
+        {st.session_state['text_b']}
+
+        使用者問題：{user_input}
+
+        請根據房屋周邊的生活機能與位置，提供有意義的回答。
+        """
+
         model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(user_input)
+        response = model.generate_content(chat_prompt)
         st.session_state["chat_history"].append(("🤖", response.text))
 
     # 顯示對話紀錄
