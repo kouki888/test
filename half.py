@@ -55,7 +55,6 @@ def geocode_address(address: str):
 
 def query_osm(lat, lng, radius=200):
     """合併查詢 OSM，一次拿回所有資料"""
-    # 建立所有 Tag 的查詢
     query_parts = []
     for tag_dict in OSM_TAGS.values():
         for k, v in tag_dict.items():
@@ -78,7 +77,6 @@ def query_osm(lat, lng, radius=200):
     except:
         return {}
 
-    # 初始化結果
     results = {k: [] for k in OSM_TAGS.keys()}
 
     for el in data.get("elements", []):
@@ -104,7 +102,13 @@ def format_info(address, info_dict):
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 (OSM + OpenCage + )")
+st.title("🏠 房屋比較助手 + 💬 對話框")
+
+# 初始化狀態
+if "comparison_done" not in st.session_state:
+    st.session_state["comparison_done"] = False
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
 col1, col2 = st.columns(2)
 with col1:
@@ -117,21 +121,18 @@ if st.button("比較房屋"):
         st.warning("請輸入兩個地址")
         st.stop()
 
-    # 1️⃣ Geocode
     lat_a, lng_a = geocode_address(addr_a)
     lat_b, lng_b = geocode_address(addr_b)
     if not lat_a or not lat_b:
         st.error("❌ 無法解析其中一個地址")
         st.stop()
 
-    # 2️⃣ OSM 查詢
     info_a = query_osm(lat_a, lng_a, radius=200)
     info_b = query_osm(lat_b, lng_b, radius=200)
 
     text_a = format_info(addr_a, info_a)
     text_b = format_info(addr_b, info_b)
 
-    # 3️⃣ Gemini 比較
     prompt = f"""
     你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
     請列出優點與缺點，最後做總結：
@@ -143,11 +144,9 @@ if st.button("比較房屋"):
     model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
 
-    # 4️⃣ 顯示結果
     st.subheader("📊 Gemini 分析結果")
     st.write(response.text)
 
-    # 左右對照
     st.subheader("🏠 房屋資訊對照表")
     c1, c2 = st.columns(2)
     with c1:
@@ -155,3 +154,27 @@ if st.button("比較房屋"):
     with c2:
         st.markdown(f"### 房屋 B\n{text_b}")
 
+    # 標記比較完成
+    st.session_state["comparison_done"] = True
+
+
+# ===============================
+# 簡單對話框（比較完成後才出現）
+# ===============================
+if st.session_state["comparison_done"]:
+    st.header("💬 簡單對話框")
+
+    with st.form("chat_form", clear_on_submit=True):
+        user_input = st.text_input("你想問什麼？", placeholder="請輸入問題...")
+        submitted = st.form_submit_button("🚀 送出")
+
+    if submitted and user_input:
+        st.session_state["chat_history"].append(("👤", user_input))
+
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(user_input)
+        st.session_state["chat_history"].append(("🤖", response.text))
+
+    # 顯示對話紀錄
+    for role, msg in st.session_state["chat_history"]:
+        st.markdown(f"**{role}**：{msg}")
