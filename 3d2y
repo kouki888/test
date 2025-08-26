@@ -154,10 +154,3 @@ if st.button("比較房屋"):
         st.markdown(f"### 房屋 A\n{text_a}")
     with c2:
         st.markdown(f"### 房屋 B\n{text_b}")
-
-    # 5️⃣ 地圖顯示
-    st.subheader("🗺️ 地圖")
-    m = folium.Map(location=[(lat_a+lat_b)/2, (lng_a+lng_b)/2], zoom_start=15)
-    folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
-    folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
-    st_folium(m, width=700, height=500)
