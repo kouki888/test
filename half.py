@@ -99,7 +99,7 @@ def format_info(address, info_dict):
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 + 💬 簡單對話框")
+st.title("🏠 房屋比較助手 + 💬 簡單對話框221")
 
 # -------- 房屋比較助手 --------
 st.header("🏠 房屋比較")
@@ -183,3 +183,4 @@ if st.session_state["comparison_done"]:
     # 顯示對話紀錄
     for role, msg in st.session_state["chat_history"]:
         st.markdown(f"**{role}**：{msg}")
+
