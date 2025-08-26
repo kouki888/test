@@ -15,13 +15,14 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 if not OPENCAGE_KEY:
     st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
+    st.stop()
 
 if not GEMINI_KEY:
     st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
+    st.stop()
 
 # 設定 Gemini API
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
+genai.configure(api_key=GEMINI_KEY)
 
 # ===============================
 # 支援查詢的 OSM Tags
@@ -46,13 +47,15 @@ def geocode_address(address: str):
         res = requests.get(url, params=params, timeout=10).json()
         if res["results"]:
             return res["results"][0]["geometry"]["lat"], res["results"][0]["geometry"]["lng"]
+        else:
+            return None, None
     except Exception:
-        pass
-    return None, None
+        return None, None
 
 
 def query_osm(lat, lng, radius=200):
     """合併查詢 OSM，一次拿回所有資料"""
+    # 建立所有 Tag 的查詢
     query_parts = []
     for tag_dict in OSM_TAGS.values():
         for k, v in tag_dict.items():
@@ -75,11 +78,13 @@ def query_osm(lat, lng, radius=200):
     except:
         return {}
 
+    # 初始化結果
     results = {k: [] for k in OSM_TAGS.keys()}
 
     for el in data.get("elements", []):
         tags = el.get("tags", {})
         name = tags.get("name", "未命名")
+
         for label, tag_dict in OSM_TAGS.items():
             for k, v in tag_dict.items():
                 if tags.get(k) == v:
@@ -99,70 +104,53 @@ def format_info(address, info_dict):
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 + 💬 簡單對話框")
+st.title("🏠 房屋比較助手 (OSM + OpenCage + Gemini)")
 
-# -------- 房屋比較助手 --------
-st.header("🏠 房屋比較")
 col1, col2 = st.columns(2)
 with col1:
     addr_a = st.text_input("輸入房屋 A 地址")
 with col2:
     addr_b = st.text_input("輸入房屋 B 地址")
 
-# 初始化狀態
-if "comparison_done" not in st.session_state:
-    st.session_state["comparison_done"] = False
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
-
 if st.button("比較房屋"):
     if not addr_a or not addr_b:
         st.warning("請輸入兩個地址")
-    else:
-        lat_a, lng_a = geocode_address(addr_a)
-        lat_b, lng_b = geocode_address(addr_b)
+        st.stop()
 
-        if not lat_a or not lat_b:
-            st.error("❌ 無法解析其中一個地址")
-        else:
-            info_a = query_osm(lat_a, lng_a, radius=200)
-            info_b = query_osm(lat_b, lng_b, radius=200)
+    # 1️⃣ Geocode
+    lat_a, lng_a = geocode_address(addr_a)
+    lat_b, lng_b = geocode_address(addr_b)
+    if not lat_a or not lat_b:
+        st.error("❌ 無法解析其中一個地址")
+        st.stop()
 
-            text_a = format_info(addr_a, info_a)
-            text_b = format_info(addr_b, info_b)
+    # 2️⃣ OSM 查詢
+    info_a = query_osm(lat_a, lng_a, radius=200)
+    info_b = query_osm(lat_b, lng_b, radius=200)
 
-            if GEMINI_KEY:
-                prompt = f"""
-                你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
-                請列出優點與缺點，最後做總結：
+    text_a = format_info(addr_a, info_a)
+    text_b = format_info(addr_b, info_b)
 
-                {text_a}
+    # 3️⃣ Gemini 比較
+    prompt = f"""
+    你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
+    請列出優點與缺點，最後做總結：
 
-                {text_b}
-                """
-                model = genai.GenerativeModel("gemini-2.0-flash")
-                response = model.generate_content(prompt)
+    {text_a}
 
-                st.subheader("📊 Gemini 分析結果")
-                st.write(response.text)
+    {text_b}
+    """
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    response = model.generate_content(prompt)
 
-            st.subheader("🏠 房屋資訊對照表")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown(f"### 房屋 A\n{text_a}")
-            with c2:
-                st.markdown(f"### 房屋 B\n{text_b}")
+    # 4️⃣ 顯示結果
+    st.subheader("📊 Gemini 分析結果")
+    st.write(response.text)
 
-            st.subheader("🗺️ 地圖")
-            m = folium.Map(location=[(lat_a+lat_b)/2, (lng_a+lng_b)/2], zoom_start=15)
-            folium.Marker([lat_a, lng_a], popup="房屋 A", icon=folium.Icon(color="red")).add_to(m)
-            folium.Marker([lat_b, lng_b], popup="房屋 B", icon=folium.Icon(color="blue")).add_to(m)
-            st_folium(m, width=700, height=500)
-
-            # ✅ 標記比較已完成
-            st.session_state["comparison_done"] = True
-
-
-
-
-
+    # 左右對照
+    st.subheader("🏠 房屋資訊對照表")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"### 房屋 A\n{text_a}")
+    with c2:
+        st.markdown(f"### 房屋 B\n{text_b}")
