@@ -104,7 +104,7 @@ def format_info(address, info_dict):
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 (OSM + OpenCage + Gemini)")
+st.title("🏠 房屋比較助手 (OSM + OpenCage + )")
 
 col1, col2 = st.columns(2)
 with col1:
