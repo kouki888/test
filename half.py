@@ -147,11 +147,10 @@ if st.button("比較房屋"):
     st.subheader("📊 Gemini 分析結果")
     st.write(response.text)
 
-    st.subheader("🏠 房屋資訊對照表")
-    c1, c2 = st.columns(2)
-    with c1:
+    # ✅ 把資訊對照表放到側邊欄
+    with st.sidebar:
+        st.subheader("🏠 房屋資訊對照表")
         st.markdown(f"### 房屋 A\n{text_a}")
-    with c2:
         st.markdown(f"### 房屋 B\n{text_b}")
 
     # 標記比較完成
