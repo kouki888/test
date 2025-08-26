@@ -155,13 +155,19 @@ if st.button("比較房屋"):
     st.subheader("📊 Gemini 分析結果")
     st.write(response.text)
 
-    # ✅ 把資訊對照表放到側邊欄
-    with st.sidebar:
-        st.subheader("🏠 房屋資訊對照表")
-        st.markdown(f"### 房屋 A\n{text_a}")
-        st.markdown(f"### 房屋 B\n{text_b}")
-
     st.session_state["comparison_done"] = True
+
+
+# ===============================
+# 側邊欄（即使切換狀態也保留）
+# ===============================
+with st.sidebar:
+    if st.session_state["comparison_done"]:
+        st.subheader("🏠 房屋資訊對照表")
+        st.markdown(f"### 房屋 A\n{st.session_state['text_a']}")
+        st.markdown(f"### 房屋 B\n{st.session_state['text_b']}")
+    else:
+        st.info("⚠️ 請先輸入房屋地址並比較")
 
 
 # ===============================
