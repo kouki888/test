@@ -99,7 +99,7 @@ def format_info(address, info_dict):
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 + 💬 簡單對話框21")
+st.title("🏠 房屋比較助手 + 💬 簡單對話框")
 
 # -------- 房屋比較助手 --------
 st.header("🏠 房屋比較")
@@ -163,25 +163,6 @@ if st.button("比較房屋"):
             st.session_state["comparison_done"] = True
 
 
-# -------- 簡單對話框（比較完成後才出現） --------
-if st.session_state["comparison_done"]:
-    st.header("💬 簡單對話框")
 
-    with st.form("user_input_form", clear_on_submit=True):
-        user_input = st.text_input("你想問什麼？", placeholder="請輸入問題...")
-        submitted = st.form_submit_button("🚀 送出")
-
-    if submitted and user_input:
-        # 加入使用者輸入
-        st.session_state["chat_history"].append(("👤", user_input))
-
-        if GEMINI_KEY:
-            model = genai.GenerativeModel("gemini-2.0-flash")
-            response = model.generate_content(user_input)
-            st.session_state["chat_history"].append(("🤖", response.text))
-
-    # 顯示對話紀錄
-    for role, msg in st.session_state["chat_history"]:
-        st.markdown(f"**{role}**：{msg}")
 
 
