@@ -25,15 +25,33 @@ if not GEMINI_KEY:
 genai.configure(api_key=GEMINI_KEY)
 
 # ===============================
-# 支援查詢的 OSM Tags
+# 支援查詢的 OSM Tags（擴充）
 # ===============================
 OSM_TAGS = {
-    "交通": {"public_transport": "stop_position"},
-    "超商": {"shop": "convenience"},
-    "餐廳": {"amenity": "restaurant"},
-    "學校": {"amenity": "school"},
-    "醫院": {"amenity": "hospital"},
-    "藥局": {"amenity": "pharmacy"}
+    "交通": [
+        {"public_transport": "stop_position"},
+        {"highway": "bus_stop"},
+        {"railway": "station"}
+    ],
+    "超商": [
+        {"shop": "convenience"}
+    ],
+    "餐廳": [
+        {"amenity": "restaurant"}
+    ],
+    "學校": [
+        {"amenity": "school"},
+        {"amenity": "college"},
+        {"amenity": "university"}
+    ],
+    "醫院": [
+        {"amenity": "hospital"},
+        {"healthcare": "hospital"}
+    ],
+    "藥局": [
+        {"amenity": "pharmacy"},
+        {"healthcare": "pharmacy"}
+    ]
 }
 
 # ===============================
@@ -56,13 +74,14 @@ def geocode_address(address: str):
 def query_osm(lat, lng, radius=200):
     """合併查詢 OSM，一次拿回所有資料"""
     query_parts = []
-    for tag_dict in OSM_TAGS.values():
-        for k, v in tag_dict.items():
-            query_parts.append(f"""
-              node["{k}"="{v}"](around:{radius},{lat},{lng});
-              way["{k}"="{v}"](around:{radius},{lat},{lng});
-              relation["{k}"="{v}"](around:{radius},{lat},{lng});
-            """)
+    for tag_list in OSM_TAGS.values():
+        for tag_dict in tag_list:
+            for k, v in tag_dict.items():
+                query_parts.append(f"""
+                  node["{k}"="{v}"](around:{radius},{lat},{lng});
+                  way["{k}"="{v}"](around:{radius},{lat},{lng});
+                  relation["{k}"="{v}"](around:{radius},{lat},{lng});
+                """)
     query = f"""
     [out:json][timeout:25];
     (
@@ -83,10 +102,11 @@ def query_osm(lat, lng, radius=200):
         tags = el.get("tags", {})
         name = tags.get("name", "未命名")
 
-        for label, tag_dict in OSM_TAGS.items():
-            for k, v in tag_dict.items():
-                if tags.get(k) == v:
-                    results[label].append(name)
+        for label, tag_list in OSM_TAGS.items():
+            for tag_dict in tag_list:
+                for k, v in tag_dict.items():
+                    if tags.get(k) == v:
+                        results[label].append(name)
 
     return results
 
@@ -120,6 +140,9 @@ with col1:
 with col2:
     addr_b = st.text_input("輸入房屋 B 地址")
 
+# 半徑選擇
+radius = st.select_slider("選擇查詢半徑 (公尺)", options=[200, 500, 1000], value=500)
+
 if st.button("比較房屋"):
     if not addr_a or not addr_b:
         st.warning("請輸入兩個地址")
@@ -131,8 +154,8 @@ if st.button("比較房屋"):
         st.error("❌ 無法解析其中一個地址")
         st.stop()
 
-    info_a = query_osm(lat_a, lng_a, radius=200)
-    info_b = query_osm(lat_b, lng_b, radius=200)
+    info_a = query_osm(lat_a, lng_a, radius=radius)
+    info_b = query_osm(lat_b, lng_b, radius=radius)
 
     text_a = format_info(addr_a, info_a)
     text_b = format_info(addr_b, info_b)
@@ -144,9 +167,7 @@ if st.button("比較房屋"):
     prompt = f"""
     你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
     請列出優點與缺點，最後做總結：
-
     {text_a}
-
     {text_b}
     """
     model = genai.GenerativeModel("gemini-2.0-flash")
@@ -186,13 +207,9 @@ if st.session_state["comparison_done"]:
         # ✅ 把房屋資訊帶進 Prompt
         chat_prompt = f"""
         以下是兩間房屋的周邊資訊：
-
         {st.session_state['text_a']}
-
         {st.session_state['text_b']}
-
         使用者問題：{user_input}
-
         請根據房屋周邊的生活機能與位置，提供有意義的回答。
         """
 
