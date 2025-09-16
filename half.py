@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import math
-from streamlit.components.v1 import html
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
@@ -134,20 +133,26 @@ if st.button("比較房屋"):
     places_a = search_category(addr_a, selected_category, radius, google_api_key)
     places_b = search_category(addr_b, selected_category, radius, google_api_key)
 
-    # 顯示地點列表
-    st.subheader(f"🏡 {addr_a} - {selected_category}")
-    if not places_a:
-        st.write("該範圍內無相關地點。")
-    else:
-        for t, name, _, _, dist in places_a:
-            st.write(f"**{t}** - {name} ({dist} 公尺)")
+    # 顯示地點列表 + 勾選統計
+    def show_places(label, address, places):
+        st.subheader(f"🏡 {address} - {label}")
+        if not places:
+            st.write("該範圍內無相關地點。")
+            return []
 
-    st.subheader(f"🏡 {addr_b} - {selected_category}")
-    if not places_b:
-        st.write("該範圍內無相關地點。")
-    else:
-        for t, name, _, _, dist in places_b:
-            st.write(f"**{t}** - {name} ({dist} 公尺)")
+        selected = []
+        for idx, (t, name, _, _, dist) in enumerate(places):
+            checked = st.checkbox(f"**{t}** - {name} ({dist} 公尺)", key=f"{address}-{idx}")
+            if checked:
+                selected.append((t, name, dist))
+
+        # 統計勾選的數量
+        if selected:
+            st.success(f"✅ 已勾選 {len(selected)} 個地點")
+        return selected
+
+    sel_a = show_places(selected_category, addr_a, places_a)
+    sel_b = show_places(selected_category, addr_b, places_b)
 
     # 整理給 Gemini 的文字
     text_a = format_places(addr_a, places_a)
