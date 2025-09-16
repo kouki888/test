@@ -4,22 +4,6 @@ import math
 from streamlit.components.v1 import html
 import google.generativeai as genai
 import os
-展開
-message.txt
-6 KB
-試試看
-﻿
-8/15
-jinkuang.
- 
- 
-/111
-import streamlit as st
-import requests
-import math
-from streamlit.components.v1 import html
-import google.generativeai as genai
-import os
 from dotenv import load_dotenv
 
 # ===============================
@@ -179,5 +163,3 @@ if st.button("比較房屋"):
     response = model.generate_content(prompt)
     st.subheader("📊 Gemini 分析結果")
     st.write(response.text)
-message.txt
-6 KB
