@@ -1,138 +1,184 @@
+柚子
+ooluckieroo
+線上
+
+柚子 — 2025/6/5 下午 03:47
+8/15 — 2025/6/5 下午 03:47
+附件檔案類型：unknown
+20250605.pbix
+252.99 KB
+8/15 — 2025/6/5 下午 04:20
+pubg0984@gmail.com
+F131086465f
+8/15 — 2025/6/12 上午 10:44
+https://www.canva.com/design/DAGp03aF80I/crdFgNbVGJGh9mGMxB3tMw/edit?utm_content=DAGp03aF80I&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+你錯過了來自 
+8/15
+ 長達3 分鐘的通話。 — 2025/7/19 上午 11:41
+柚子
+ 進行了長達4 分鐘的通話。 — 2025/7/19 上午 11:44
+柚子 — 2025/7/20 上午 01:57
+https://obrvtgb73y7ptvgb458xy2.streamlit.app/
+Streamlit
+Gemini Chat App
+This app was built in Streamlit! Check it out and visit https://streamlit.io for more awesome community apps. 🎈
+Gemini Chat App
+看看
+8/15 — 2025/7/20 上午 10:27
+我晚上再看
+我電腦有問題
+柚子 — 2025/7/21 下午 09:07
+https://discord.gg/jmbTq8Yp
+https://discord.gg/jmbTq8Yp
+8/15 — 2025/8/13 上午 12:29
+圖片
+圖片
+圖片
+圖片
+圖片
+圖片
+柚子 — 2025/9/15 下午 08:09
+https://9fflfbfzwemyu4yrq7zyzf.streamlit.app/
+Streamlit
+Streamlit
+This app was built in Streamlit! Check it out and visit https://streamlit.io for more awesome community apps. 🎈
+Streamlit
+柚子 — 2025/9/15 下午 08:35
+有看到嗎
+8/15 — 昨天 下午 05:52
 import streamlit as st
 import requests
-import folium
+import math
+from streamlit.components.v1 import html
+import google.generativeai as genai
+import os
+展開
+message.txt
+6 KB
+試試看
+﻿
+8/15
+jinkuang.
+ 
+ 
+/111
+import streamlit as st
+import requests
+import math
+from streamlit.components.v1 import html
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-from streamlit_folium import st_folium
-import google.generativeai as genai
 
 # ===============================
-# 載入環境變數
+# 環境變數
 # ===============================
 load_dotenv()
-OPENCAGE_KEY = os.getenv("OPENCAGE_API_KEY")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
-
-if not OPENCAGE_KEY:
-    st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
-    st.stop()
-
 if not GEMINI_KEY:
     st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
     st.stop()
-
-# 設定 Gemini API
 genai.configure(api_key=GEMINI_KEY)
 
 # ===============================
-# 支援查詢的 OSM Tags（擴充）
+# Google Places 類型
 # ===============================
-OSM_TAGS = {
-    "交通": [
-        {"public_transport": "stop_position"},
-        {"highway": "bus_stop"},
-        {"railway": "station"}
-    ],
-    "超商": [
-        {"shop": "convenience"}
-    ],
-    "餐廳": [
-        {"amenity": "restaurant"}
-    ],
-    "學校": [
-        {"amenity": "school"},
-        {"amenity": "college"},
-        {"amenity": "university"}
-    ],
-    "醫院": [
-        {"amenity": "hospital"},
-        {"healthcare": "hospital"}
-    ],
-    "藥局": [
-        {"amenity": "pharmacy"},
-        {"healthcare": "pharmacy"}
-    ]
+PLACE_TYPES = {
+    "教育": {
+        "圖書館": "library",
+        "幼兒園": "preschool",
+        "小學": "primary_school",
+        "學校": "school",
+        "中學": "secondary_school",
+        "大學": "university",
+    },
+    "健康與保健": {
+        "牙醫": "dentist",
+        "醫師": "doctor",
+        "藥局": "pharmacy",
+        "醫院": "hospital",
+    },
+    "購物": {
+        "便利商店": "convenience_store",
+        "超市": "supermarket",
+        "百貨公司": "department_store",
+    },
+    "交通運輸": {
+        "公車站": "bus_station",
+        "地鐵站": "subway_station",
+        "火車站": "train_station",
+    },
+    "餐飲": {
+        "餐廳": "restaurant"
+    }
 }
 
 # ===============================
 # 工具函式
 # ===============================
-def geocode_address(address: str):
-    """利用 OpenCage 把地址轉成經緯度"""
-    url = "https://api.opencagedata.com/geocode/v1/json"
-    params = {"q": address, "key": OPENCAGE_KEY, "language": "zh-TW", "limit": 1}
-    try:
-        res = requests.get(url, params=params, timeout=10).json()
-        if res["results"]:
-            return res["results"][0]["geometry"]["lat"], res["results"][0]["geometry"]["lng"]
-        else:
-            return None, None
-    except Exception:
-        return None, None
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(d_lambda/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
+def geocode_address(address, api_key):
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {"address": address, "key": api_key, "language": "zh-TW"}
+    res = requests.get(url, params=params).json()
+    if res.get("status") == "OK":
+        loc = res["results"][0]["geometry"]["location"]
+        return loc["lat"], loc["lng"]
+    return None, None
 
-def query_osm(lat, lng, radius=200):
-    """合併查詢 OSM，一次拿回所有資料"""
-    query_parts = []
-    for tag_list in OSM_TAGS.values():
-        for tag_dict in tag_list:
-            for k, v in tag_dict.items():
-                query_parts.append(f"""
-                  node["{k}"="{v}"](around:{radius},{lat},{lng});
-                  way["{k}"="{v}"](around:{radius},{lat},{lng});
-                  relation["{k}"="{v}"](around:{radius},{lat},{lng});
-                """)
-    query = f"""
-    [out:json][timeout:25];
-    (
-        {"".join(query_parts)}
-    );
-    out center;
-    """
+def search_category(address, category, radius, api_key):
+    lat, lng = geocode_address(address, api_key)
+    if not lat:
+        return []
 
-    try:
-        r = requests.post("https://overpass-api.de/api/interpreter", data=query.encode("utf-8"), timeout=20)
-        data = r.json()
-    except:
-        return {}
+    all_places = []
+    for sub_type, place_type in PLACE_TYPES[category].items():
+        url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+        params = {
+            "location": f"{lat},{lng}",
+            "radius": radius,
+            "type": place_type,
+            "key": api_key,
+            "language": "zh-TW"
+        }
+        res = requests.get(url, params=params).json()
+        for p in res.get("results", []):
+            name = p.get("name", "未命名")
+            p_lat = p["geometry"]["location"]["lat"]
+            p_lng = p["geometry"]["location"]["lng"]
+            dist = int(haversine(lat, lng, p_lat, p_lng))
+            all_places.append((sub_type, name, p_lat, p_lng, dist))
 
-    results = {k: [] for k in OSM_TAGS.keys()}
+    all_places.sort(key=lambda x: x[4])
+    return all_places
 
-    for el in data.get("elements", []):
-        tags = el.get("tags", {})
-        name = tags.get("name", "未命名")
-
-        for label, tag_list in OSM_TAGS.items():
-            for tag_dict in tag_list:
-                for k, v in tag_dict.items():
-                    if tags.get(k) == v:
-                        results[label].append(name)
-
-    return results
-
-
-def format_info(address, info_dict):
-    """整理統計數字給 Gemini"""
-    lines = [f"房屋（{address}）："]
-    for k, v in info_dict.items():
-        lines.append(f"- {k}: {len(v)} 個")
+def format_places(address, places_list):
+    lines = [f"房屋（{address}）周邊生活機能："]
+    if not places_list:
+        lines.append("- 該範圍內無相關地點。")
+    else:
+        counter = {}
+        for t, name, _, _, _ in places_list:
+            counter[t] = counter.get(t, 0) + 1
+        for k, v in counter.items():
+            lines.append(f"- {k}: {v} 個")
     return "\n".join(lines)
-
 
 # ===============================
 # Streamlit UI
 # ===============================
-st.title("🏠 房屋比較助手 + 💬 對話框")
+st.title("🏠 房屋周邊生活機能比較 + 💬 Gemini 分析")
 
-# 初始化狀態
-if "comparison_done" not in st.session_state:
-    st.session_state["comparison_done"] = False
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
-if "text_a" not in st.session_state:
-    st.session_state["text_a"] = ""
-if "text_b" not in st.session_state:
-    st.session_state["text_b"] = ""
+google_api_key = st.text_input("輸入 Google Maps API Key", type="password")
+radius = st.select_slider("搜尋半徑 (公尺)", [200, 400, 600, 1000], value=400)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -140,83 +186,46 @@ with col1:
 with col2:
     addr_b = st.text_input("輸入房屋 B 地址")
 
-# 半徑選擇
-radius = st.select_slider("選擇查詢半徑 (公尺)", options=[200, 500, 1000], value=500)
+st.write("### 點擊分類按鈕來選擇要比較的生活機能")
+selected_category = st.radio("分類", list(PLACE_TYPES.keys()))
 
 if st.button("比較房屋"):
-    if not addr_a or not addr_b:
-        st.warning("請輸入兩個地址")
+    if not google_api_key or not addr_a or not addr_b:
+        st.warning("請先輸入 Google Maps API Key 和兩個地址")
         st.stop()
 
-    lat_a, lng_a = geocode_address(addr_a)
-    lat_b, lng_b = geocode_address(addr_b)
-    if not lat_a or not lat_b:
-        st.error("❌ 無法解析其中一個地址")
-        st.stop()
+    # 搜尋兩個房屋的周邊資料
+    places_a = search_category(addr_a, selected_category, radius, google_api_key)
+    places_b = search_category(addr_b, selected_category, radius, google_api_key)
 
-    info_a = query_osm(lat_a, lng_a, radius=radius)
-    info_b = query_osm(lat_b, lng_b, radius=radius)
+    # 顯示地點列表
+    st.subheader(f"🏡 {addr_a} - {selected_category}")
+    if not places_a:
+        st.write("該範圍內無相關地點。")
+    else:
+        for t, name, _, _, dist in places_a:
+            st.write(f"**{t}** - {name} ({dist} 公尺)")
 
-    text_a = format_info(addr_a, info_a)
-    text_b = format_info(addr_b, info_b)
+    st.subheader(f"🏡 {addr_b} - {selected_category}")
+    if not places_b:
+        st.write("該範圍內無相關地點。")
+    else:
+        for t, name, _, _, dist in places_b:
+            st.write(f"**{t}** - {name} ({dist} 公尺)")
 
-    # 儲存資訊給聊天使用
-    st.session_state["text_a"] = text_a
-    st.session_state["text_b"] = text_b
+    # 整理給 Gemini 的文字
+    text_a = format_places(addr_a, places_a)
+    text_b = format_places(addr_b, places_b)
 
     prompt = f"""
-    你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
-    請列出優點與缺點，最後做總結：
-    {text_a}
-    {text_b}
-    """
+你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
+請列出優點與缺點，最後做總結：
+{text_a}
+{text_b}
+"""
     model = genai.GenerativeModel("gemini-2.0-flash")
     response = model.generate_content(prompt)
-
     st.subheader("📊 Gemini 分析結果")
     st.write(response.text)
-
-    st.session_state["comparison_done"] = True
-
-
-# ===============================
-# 側邊欄（即使切換狀態也保留）
-# ===============================
-with st.sidebar:
-    if st.session_state["comparison_done"]:
-        st.subheader("🏠 房屋資訊對照表")
-        st.markdown(f"### 房屋 A\n{st.session_state['text_a']}")
-        st.markdown(f"### 房屋 B\n{st.session_state['text_b']}")
-    else:
-        st.info("⚠️ 請先輸入房屋地址並比較")
-
-
-# ===============================
-# 簡單對話框（結合地點資訊）
-# ===============================
-if st.session_state["comparison_done"]:
-    st.header("💬 簡單對話框")
-
-    with st.form("chat_form", clear_on_submit=True):
-        user_input = st.text_input("你想問什麼？", placeholder="請輸入問題...")
-        submitted = st.form_submit_button("🚀 送出")
-
-    if submitted and user_input:
-        st.session_state["chat_history"].append(("👤", user_input))
-
-        # ✅ 把房屋資訊帶進 Prompt
-        chat_prompt = f"""
-        以下是兩間房屋的周邊資訊：
-        {st.session_state['text_a']}
-        {st.session_state['text_b']}
-        使用者問題：{user_input}
-        請根據房屋周邊的生活機能與位置，提供有意義的回答。
-        """
-
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(chat_prompt)
-        st.session_state["chat_history"].append(("🤖", response.text))
-
-    # 顯示對話紀錄
-    for role, msg in st.session_state["chat_history"]:
-        st.markdown(f"**{role}**：{msg}")
+message.txt
+6 KB
