@@ -1,204 +1,144 @@
 import streamlit as st
-import requests
-import os
-from dotenv import load_dotenv
+import pandas as pd
+import folium
+from streamlit_folium import st_folium
 import google.generativeai as genai
 
 # ===============================
-# 載入環境變數
+# 假設的輔助函數（你應該已有實作）
 # ===============================
-load_dotenv()
-OPENCAGE_KEY = os.getenv("OPENCAGE_API_KEY")
-GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+def geocode_address(address, google_key):
+    """將地址轉換成經緯度（請替換成你的 geocoding 實作）"""
+    # TODO: 這裡換成你的 geocoding API
+    return 25.0330, 121.5654  # 台北 101 當作示範
 
-if not OPENCAGE_KEY:
-    st.error("❌ 請先設定環境變數 OPENCAGE_API_KEY")
-    st.stop()
+def query_google_places_by_type(lat, lng, google_key, categories, radius=500):
+    """查詢 Google Places API（請替換成你的實作）"""
+    # TODO: 這裡回傳模擬的生活機能資料
+    return [{"name": "便利商店", "lat": lat+0.001, "lng": lng+0.001, "type": "便利商店"}]
 
-if not GEMINI_KEY:
-    st.error("❌ 請先設定環境變數 GEMINI_API_KEY")
-    st.stop()
+def add_markers(map_obj, places, color):
+    """在 folium 地圖上加上標記"""
+    for p in places:
+        folium.Marker(
+            [p["lat"], p["lng"]],
+            popup=p["name"],
+            icon=folium.Icon(color=color, icon="info-sign")
+        ).add_to(map_obj)
 
-# 設定 Gemini API
-genai.configure(api_key=GEMINI_KEY)
+def format_info(address, info):
+    """格式化房屋與生活機能資訊"""
+    details = [f"- {p['type']}：{p['name']}" for p in info]
+    return f"📍 地址：{address}\n" + "\n".join(details)
+
 
 # ===============================
-# 支援查詢的 OSM Tags
+# 模擬收藏清單資料
 # ===============================
-OSM_TAGS = {
-    "交通": {"public_transport": "stop_position"},
-    "超商": {"shop": "convenience"},
-    "餐廳": {"amenity": "restaurant"},
-    "學校": {"amenity": "school"},
-    "醫院": {"amenity": "hospital"},
-    "藥局": {"amenity": "pharmacy"}
+if "saved_properties" not in st.session_state:
+    st.session_state.saved_properties = [
+        {"id": "A001", "name": "信義區豪宅", "address": "台北市信義路五段7號"},
+        {"id": "B002", "name": "大安區電梯大樓", "address": "台北市大安路一段100號"},
+        {"id": "C003", "name": "中山區景觀宅", "address": "台北市中山北路二段45號"}
+    ]
+
+PLACE_TYPES_COMPARE = {
+    "便利商店": "convenience_store",
+    "學校": "school",
+    "醫院": "hospital",
+    "餐廳": "restaurant",
+    "大眾運輸": "transit_station",
+    "購物中心": "shopping_mall"
 }
 
 # ===============================
-# 工具函式
+# Streamlit 主畫面
 # ===============================
-def geocode_address(address: str):
-    """利用 OpenCage 把地址轉成經緯度"""
-    url = "https://api.opencagedata.com/geocode/v1/json"
-    params = {"q": address, "key": OPENCAGE_KEY, "language": "zh-TW", "limit": 1}
-    try:
-        res = requests.get(url, params=params, timeout=10).json()
-        if res["results"]:
-            return res["results"][0]["geometry"]["lat"], res["results"][0]["geometry"]["lng"]
-        else:
-            return None, None
-    except Exception:
-        return None, None
+st.title("🏠 房屋比較與分析")
 
+# 確認是否有收藏
+if not st.session_state.saved_properties:
+    st.warning("⚠️ 尚未收藏任何房屋，請先到【收藏房屋】頁面新增。")
+    st.stop()
 
-def query_osm(lat, lng, radius=200):
-    """合併查詢 OSM，一次拿回所有資料"""
-    query_parts = []
-    for tag_dict in OSM_TAGS.values():
-        for k, v in tag_dict.items():
-            query_parts.append(f"""
-              node["{k}"="{v}"](around:{radius},{lat},{lng});
-              way["{k}"="{v}"](around:{radius},{lat},{lng});
-              relation["{k}"="{v}"](around:{radius},{lat},{lng});
-            """)
-    query = f"""
-    [out:json][timeout:25];
-    (
-        {"".join(query_parts)}
-    );
-    out center;
-    """
-
-    try:
-        r = requests.post("https://overpass-api.de/api/interpreter", data=query.encode("utf-8"), timeout=20)
-        data = r.json()
-    except:
-        return {}
-
-    results = {k: [] for k in OSM_TAGS.keys()}
-
-    for el in data.get("elements", []):
-        tags = el.get("tags", {})
-        name = tags.get("name", "未命名")
-
-        for label, tag_dict in OSM_TAGS.items():
-            for k, v in tag_dict.items():
-                if tags.get(k) == v:
-                    results[label].append(name)
-
-    return results
-
-
-def format_info(address, info_dict):
-    """整理統計數字給 Gemini"""
-    lines = [f"房屋（{address}）："]
-    for k, v in info_dict.items():
-        lines.append(f"- {k}: {len(v)} 個")
-    return "\n".join(lines)
-
-
-def show_interactive_info(address, info_dict):
-    """在主畫面顯示地點清單並允許點選，最後統計"""
-    st.subheader(f"🏡 {address}")
-    selected = {}
-    for cat, places in info_dict.items():
-        if not places:
-            st.write(f"- {cat}: 無")
-            continue
-        st.markdown(f"**{cat}**")
-        checked_list = []
-        for i, name in enumerate(places):
-            key = f"{address}-{cat}-{i}"
-            if st.checkbox(f"{name}", key=key):
-                checked_list.append(name)
-        selected[cat] = checked_list
-
-    # 統計數量
-    summary = {cat: len(lst) for cat, lst in selected.items()}
-    st.success(f"✅ 你勾選的統計數量: {summary}")
-    return summary
-
-
-# ===============================
-# Streamlit UI
-# ===============================
-st.title("🏠 房屋比較助手 + 💬 對話框 + ✅ 勾選統計")
-
-# 初始化狀態
-if "comparison_done" not in st.session_state:
-    st.session_state["comparison_done"] = False
-if "text_a" not in st.session_state:
-    st.session_state["text_a"] = ""
-if "text_b" not in st.session_state:
-    st.session_state["text_b"] = ""
-if "info_a" not in st.session_state:
-    st.session_state["info_a"] = {}
-if "info_b" not in st.session_state:
-    st.session_state["info_b"] = {}
-
+# 從收藏清單選擇
+prop_names = [f"{p['name']} - {p['address']}" for p in st.session_state.saved_properties]
 col1, col2 = st.columns(2)
 with col1:
-    addr_a = st.text_input("輸入房屋 A 地址")
+    selected_a = st.selectbox("選擇房屋 A", prop_names, key="compare_a")
 with col2:
-    addr_b = st.text_input("輸入房屋 B 地址")
+    selected_b = st.selectbox("選擇房屋 B", prop_names, key="compare_b")
 
-if st.button("比較房屋"):
-    if not addr_a or not addr_b:
-        st.warning("請輸入兩個地址")
+# 半徑選擇
+radius = st.slider("搜尋半徑 (公尺)", min_value=100, max_value=2000, value=500, step=50)
+
+# 生活機能類別
+st.subheader("選擇要比較的生活機能類別")
+selected_categories = []
+cols = st.columns(3)
+for idx, cat in enumerate(PLACE_TYPES_COMPARE.keys()):
+    if cols[idx % 3].checkbox(cat, value=True):
+        selected_categories.append(cat)
+
+# 比較按鈕
+if st.button("開始比較", use_container_width=True):
+    if selected_a == selected_b:
+        st.warning("⚠️ 請選擇不同的房屋來比較")
+        st.stop()
+    if not selected_categories:
+        st.warning("⚠️ 請至少選擇一個類別")
         st.stop()
 
-    lat_a, lng_a = geocode_address(addr_a)
-    lat_b, lng_b = geocode_address(addr_b)
-    if not lat_a or not lat_b:
-        st.error("❌ 無法解析其中一個地址")
-        st.stop()
+    with st.spinner("正在查詢並分析..."):
+        # 取出地址
+        addr_a = st.session_state.saved_properties[prop_names.index(selected_a)]["address"]
+        addr_b = st.session_state.saved_properties[prop_names.index(selected_b)]["address"]
 
-    info_a = query_osm(lat_a, lng_a, radius=200)
-    info_b = query_osm(lat_b, lng_b, radius=200)
+        # 地址轉經緯度
+        lat_a, lng_a = geocode_address(addr_a, "your_google_api_key")
+        lat_b, lng_b = geocode_address(addr_b, "your_google_api_key")
 
-    text_a = format_info(addr_a, info_a)
-    text_b = format_info(addr_b, info_b)
+        if not lat_a or not lat_b:
+            st.error("❌ 無法解析其中一個地址，請檢查是否正確")
+            st.stop()
 
-    # 儲存資訊給聊天使用
-    st.session_state["text_a"] = text_a
-    st.session_state["text_b"] = text_b
-    st.session_state["info_a"] = info_a
-    st.session_state["info_b"] = info_b
+        # 查詢周邊生活機能
+        info_a = query_google_places_by_type(lat_a, lng_a, "your_google_api_key", selected_categories, radius=radius)
+        info_b = query_google_places_by_type(lat_b, lng_b, "your_google_api_key", selected_categories, radius=radius)
 
-    prompt = f"""
-    你是一位房地產分析專家，請比較以下兩間房屋的生活機能。
-    請列出優點與缺點，最後做總結：
+        text_a = format_info(addr_a, info_a)
+        text_b = format_info(addr_b, info_b)
 
-    {text_a}
+        # 地圖顯示
+        st.subheader("📍 房屋 A 周邊地圖")
+        m_a = folium.Map(location=[lat_a, lng_a], zoom_start=15)
+        folium.Marker([lat_a, lng_a], popup=f"房屋 A：{addr_a}", icon=folium.Icon(color="red", icon="home")).add_to(m_a)
+        add_markers(m_a, info_a, "red")
+        st_folium(m_a, width=700, height=400)
 
-    {text_b}
-    """
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
+        st.subheader("📍 房屋 B 周邊地圖")
+        m_b = folium.Map(location=[lat_b, lng_b], zoom_start=15)
+        folium.Marker([lat_b, lng_b], popup=f"房屋 B：{addr_b}", icon=folium.Icon(color="blue", icon="home")).add_to(m_b)
+        add_markers(m_b, info_b, "blue")
+        st_folium(m_b, width=700, height=400)
 
-    st.subheader("📊 Gemini 分析結果")
-    st.write(response.text)
+        # Gemini 分析
+        prompt = f"""你是一位房地產分析專家，請比較以下兩間房屋的生活機能，
+        並列出優缺點與結論：
+        {text_a}
+        {text_b}
+        """
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(prompt)
+        result_text = response.text if hasattr(response, "text") else response.candidates[0].content.parts[0].text
 
-    st.session_state["comparison_done"] = True
+        st.subheader("📊 Gemini 分析結果")
+        st.markdown(result_text)
 
-# ===============================
-# 顯示可互動的統計
-# ===============================
-if st.session_state["comparison_done"]:
-    st.header("🔍 互動式生活機能清單")
-    col1, col2 = st.columns(2)
-    with col1:
-        show_interactive_info("房屋 A", st.session_state["info_a"])
-    with col2:
-        show_interactive_info("房屋 B", st.session_state["info_b"])
-
-# ===============================
-# 側邊欄（即使切換狀態也保留）
-# ===============================
-with st.sidebar:
-    if st.session_state["comparison_done"]:
-        st.subheader("🏠 房屋資訊對照表")
-        st.markdown(f"### 房屋 A\n{st.session_state['text_a']}")
-        st.markdown(f"### 房屋 B\n{st.session_state['text_b']}")
-    else:
-        st.info("⚠️ 請先輸入房屋地址並比較")
+        # 側邊欄對照表
+        st.sidebar.subheader("🏠 房屋資訊對照表")
+        st.sidebar.write("### 房屋 A")
+        st.sidebar.markdown(text_a)
+        st.sidebar.markdown("---")
+        st.sidebar.write("### 房屋 B")
+        st.sidebar.markdown(text_b)
