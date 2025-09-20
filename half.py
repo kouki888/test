@@ -5,7 +5,7 @@ from streamlit_folium import st_folium
 import google.generativeai as genai
 
 # ===============================
-# 假設的輔助函數（你應該已有實作）
+# 假設的輔助函數（請替換成你的實作）
 # ===============================
 def geocode_address(address, google_key):
     """將地址轉換成經緯度（請替換成你的 geocoding 實作）"""
@@ -30,6 +30,21 @@ def format_info(address, info):
     """格式化房屋與生活機能資訊"""
     details = [f"- {p['type']}：{p['name']}" for p in info]
     return f"📍 地址：{address}\n" + "\n".join(details)
+
+
+# ===============================
+# API Key 輸入框
+# ===============================
+st.sidebar.header("🔑 API 設定")
+
+google_key = st.sidebar.text_input("Google Maps API Key", type="password")
+gemini_key = st.sidebar.text_input("Gemini API Key", type="password")
+
+if google_key:
+    st.session_state["google_key"] = google_key
+if gemini_key:
+    st.session_state["gemini_key"] = gemini_key
+    genai.configure(api_key=gemini_key)
 
 
 # ===============================
@@ -88,6 +103,12 @@ if st.button("開始比較", use_container_width=True):
     if not selected_categories:
         st.warning("⚠️ 請至少選擇一個類別")
         st.stop()
+    if "google_key" not in st.session_state or not st.session_state.google_key:
+        st.error("❌ 請先輸入 Google Maps API Key")
+        st.stop()
+    if "gemini_key" not in st.session_state or not st.session_state.gemini_key:
+        st.error("❌ 請先輸入 Gemini API Key")
+        st.stop()
 
     with st.spinner("正在查詢並分析..."):
         # 取出地址
@@ -95,16 +116,16 @@ if st.button("開始比較", use_container_width=True):
         addr_b = st.session_state.saved_properties[prop_names.index(selected_b)]["address"]
 
         # 地址轉經緯度
-        lat_a, lng_a = geocode_address(addr_a, "your_google_api_key")
-        lat_b, lng_b = geocode_address(addr_b, "your_google_api_key")
+        lat_a, lng_a = geocode_address(addr_a, st.session_state.google_key)
+        lat_b, lng_b = geocode_address(addr_b, st.session_state.google_key)
 
         if not lat_a or not lat_b:
             st.error("❌ 無法解析其中一個地址，請檢查是否正確")
             st.stop()
 
         # 查詢周邊生活機能
-        info_a = query_google_places_by_type(lat_a, lng_a, "your_google_api_key", selected_categories, radius=radius)
-        info_b = query_google_places_by_type(lat_b, lng_b, "your_google_api_key", selected_categories, radius=radius)
+        info_a = query_google_places_by_type(lat_a, lng_a, st.session_state.google_key, selected_categories, radius=radius)
+        info_b = query_google_places_by_type(lat_b, lng_b, st.session_state.google_key, selected_categories, radius=radius)
 
         text_a = format_info(addr_a, info_a)
         text_b = format_info(addr_b, info_b)
