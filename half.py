@@ -33,19 +33,17 @@ def format_info(address, info):
 
 
 # ===============================
-# API Key 輸入框
-# ===============================
-st.sidebar.header("🔑 API 設定")
+# API Key 輸入區
+with st.sidebar:
+    st.header("🔑 API Key 設定")
+    google_key = st.text_input("Google Maps API Key", type="password")
+    gemini_key = st.text_input("Gemini API Key", type="password")
 
-google_key = st.sidebar.text_input("Google Maps API Key", type="password")
-gemini_key = st.sidebar.text_input("Gemini API Key", type="password")
-
-if google_key:
-    st.session_state["google_key"] = google_key
-if gemini_key:
-    st.session_state["gemini_key"] = gemini_key
+if not google_key or not gemini_key:
+    st.info("請先在左側欄位輸入 Google Maps 與 Gemini API Key")
+    st.stop()
+else:
     genai.configure(api_key=gemini_key)
-
 
 # ===============================
 # 模擬收藏清單資料
@@ -163,3 +161,4 @@ if st.button("開始比較", use_container_width=True):
         st.sidebar.markdown("---")
         st.sidebar.write("### 房屋 B")
         st.sidebar.markdown(text_b)
+
