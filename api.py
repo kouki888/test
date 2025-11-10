@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import os
 import io
 
-# ===== 載入 API 金鑰 =====
+# ========== 載入 API 金鑰 ==========
 load_dotenv()
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -18,33 +18,25 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# ===== 頁面設定 =====
-st.set_page_config(page_title="Gemini Chat App", page_icon="🤖")
+# ========== 頁面設定 ==========
+st.set_page_config(page_title="多功能應用工具", page_icon="🧰", layout="wide")
 
-# ===== 初始化 Session State =====
-def init_session_state():
-    defaults = {
-        "chat_history": [],           # 用於顯示主對話紀錄
-        "selected_chat": None,        # 當前選中的聊天索引
-        "topic_ids": [],              # 主題 ID 清單
-        "conversations": {},          # 每個主題的對話內容
-        "current_topic": "new"        # 當前主題狀態
-    }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
+# ========== 側邊欄選單 ==========
+st.sidebar.title("🧰 多功能選單")
+app_mode = st.sidebar.selectbox("請選擇功能", ["🤖 Gemini 聊天機器人", "📊 資料集分析工具"])
 
-init_session_state()
-
-# ===== 側邊欄選單 =====
-app_mode = st.sidebar.selectbox("選擇功能模式", ["🤖 Gemini 聊天機器人"])
-
-# ===== Gemini 聊天機器人 =====
+# ========== Gemini 聊天機器人 ==========
 if app_mode == "🤖 Gemini 聊天機器人":
     st.title("🤖 Gemini Chatbot")
     st.markdown("請輸入任何問題，Gemini 將會回應你。")
 
-    # ===== 使用者輸入問題 =====
+    # 初始化聊天狀態
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "selected_chat" not in st.session_state:
+        st.session_state.selected_chat = None
+
+    # 使用者輸入
     user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
 
     if st.button("🚀 送出"):
@@ -55,83 +47,100 @@ if app_mode == "🤖 Gemini 聊天機器人":
         else:
             with st.spinner("Gemini 正在生成回應..."):
                 try:
-                    # 建立模型
                     model = genai.GenerativeModel("models/gemini-2.0-flash")
-
-                    # 取得 Gemini 回覆
                     response = model.generate_content(user_input)
                     reply = response.text.strip()
 
-                    # 產生簡短主題（限制 10 字內）
+                    # 自動產生主題
                     title_prompt = f"請用不超過10個中文字為以下內容取一個簡短主題：\n{user_input}"
                     title_resp = model.generate_content(title_prompt)
                     title = title_resp.text.strip().split("\n")[0]
 
-                    # 建立新主題 ID
-                    new_topic_id = len(st.session_state.topic_ids) + 1
-
-                    # 儲存對話紀錄
-                    st.session_state.conversations[new_topic_id] = {
-                        "title": title,
-                        "messages": [
-                            {"role": "user", "content": user_input},
-                            {"role": "assistant", "content": reply}
-                        ]
-                    }
-
-                    # 更新主題列表
-                    if new_topic_id not in st.session_state.topic_ids:
-                        st.session_state.topic_ids.append(new_topic_id)
-                    st.session_state.current_topic = new_topic_id
-
-                    # 同步主要聊天紀錄（可省略）
                     st.session_state.chat_history.append({
                         "title": title,
                         "user_input": user_input,
                         "response": reply
                     })
-
-                    st.success("✅ 已新增到聊天紀錄！")
+                    st.session_state.selected_chat = len(st.session_state.chat_history) - 1
 
                 except Exception as e:
                     st.error(f"❌ 發生錯誤：{e}")
 
-    # ===== 顯示當前對話 =====
-    if st.session_state.current_topic != "new":
-        current_id = st.session_state.current_topic
-        conv = st.session_state.conversations.get(current_id, {})
-        if conv:
-            st.subheader(f"🗂️ 主題：{conv['title']}")
-            for msg in conv["messages"]:
-                if msg["role"] == "user":
-                    st.markdown(f"**👤 你：** {msg['content']}")
-                else:
-                    st.markdown(f"**🤖 Gemini：** {msg['content']}")
+    # 聊天主題紀錄
+    with st.sidebar:
+        st.markdown("---")
+        st.header("🗂️ 聊天紀錄")
+        for idx, chat in enumerate(st.session_state.chat_history):
+            if st.button(chat["title"], key=f"chat_{idx}"):
+                st.session_state.selected_chat = idx
+        if st.button("🧹 清除所有聊天紀錄"):
+            st.session_state.chat_history = []
+            st.session_state.selected_chat = None
 
-# ====== 側邊欄：聊天主題清單（使用按鈕）======
-with st.sidebar:
-    st.markdown("---")
-    st.header("🗂️ 聊天紀錄")
+    # 顯示聊天內容
+    if st.session_state.selected_chat is not None:
+        chat = st.session_state.chat_history[st.session_state.selected_chat]
+        st.subheader("👤 使用者問題")
+        st.info(chat["user_input"])
+        st.subheader("🤖 Gemini 回應")
+        st.success(chat["response"])
 
-    # 新對話按鈕
-    if st.button("🆕 新對話", key="new_topic_btn"):
-        st.session_state.current_topic = "new"
+# ========== 資料集分析工具 ==========
+elif app_mode == "📊 資料集分析工具":
+    st.title("📁 公開資料集上傳與分析")
+    st.markdown("上傳一個 Kaggle 或其他來源的 `.csv` 檔案，進行資料預覽與簡易分析。")
 
-    # 顯示所有主題按鈕
-    if len(st.session_state.topic_ids) == 0:
-        st.info("尚無聊天紀錄。")
+    with st.sidebar:
+        st.header("🔧 分析設定")
+        theme = st.selectbox("🎨 選擇主題色", ["淺色", "深色"], key="theme_select")
+        show_preview = st.checkbox("顯示資料預覽", value=True)
+        num_rows = st.slider("顯示幾列資料", min_value=5, max_value=100, value=10)
+
+    # 主題樣式
+    if theme == "深色":
+        st.markdown("""
+            <style>
+            .stApp { background-color: #000000; color: white; }
+            section[data-testid="stSidebar"] { background-color: #111111; color: white; }
+            h1, h2, h3, h4, h5, h6, p { color: white !important; }
+            .dataframe th, .dataframe td { color: white !important; }
+            </style>
+        """, unsafe_allow_html=True)
     else:
-        for tid in st.session_state.topic_ids:
-            title = st.session_state.conversations[tid]["title"]
-            button_label = f"✔️ {title}" if tid == st.session_state.current_topic else title
-            if st.button(button_label, key=f"topic_{tid}"):
-                st.session_state.current_topic = tid
+        st.markdown("""
+            <style>
+            .stApp { background-color: #ffffff; color: black; }
+            section[data-testid="stSidebar"] { background-color: #f0f2f6; color: black; }
+            </style>
+        """, unsafe_allow_html=True)
 
-    # 清除所有聊天
-    st.markdown("---")
-    if st.button("🧹 清除所有聊天紀錄"):
-        st.session_state.conversations = {}
-        st.session_state.topic_ids = []
-        st.session_state.current_topic = "new"
-        st.session_state.chat_history = []
-        st.success("✅ 所有聊天已清除！")
+    # 上傳檔案
+    uploaded_file = st.file_uploader("📤 上傳你的 CSV 檔案", type=["csv"])
+
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.success("✅ 成功載入資料！")
+
+            if show_preview:
+                tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
+
+                with tab1:
+                    st.subheader("🔍 預覽前幾列")
+                    st.dataframe(df.head(num_rows), use_container_width=True)
+
+                with tab2:
+                    st.subheader("📊 資料敘述統計")
+                    st.write(df.describe())
+
+                with tab3:
+                    st.subheader("🧩 欄位篩選器")
+                    column = st.selectbox("請選擇要顯示的欄位", df.columns)
+                    st.dataframe(df[[column]].head(num_rows), use_container_width=True)
+            else:
+                st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
+
+        except Exception as e:
+            st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
+    else:
+        st.warning("📌 請上傳一個 `.csv` 檔案。")
