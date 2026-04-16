@@ -39,7 +39,7 @@ if st.button("🔍 開始分析"):
     else:
         with st.spinner("AI分析中..."):
             try:
-                model = genai.GenerativeModel("models/gemini-1.5-flash")
+                model = genai.GenerativeModel("gemini-1.5-pro")
 
                 # ⭐ 核心：法律分析 Prompt
                 prompt = f"""
