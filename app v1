@@ -1,125 +1,144 @@
-# ====== 套件匯入 ======
-import streamlit as st                # 建立網頁介面的主套件
-import pandas as pd                  # 處理 CSV 資料的套件
-import google.generativeai as genai  # Google Gemini AI 的 Python 套件
-from PIL import Image                # 處理圖片（目前未使用）
-import requests                      # 發送 API 請求及錯誤處理
+import streamlit as st
+import google.generativeai as genai
+from dotenv import load_dotenv
+import os
 
-# ====== 頁面設定 ======
-st.set_page_config(
-    page_title="專題作業一",     # 網頁標題
-    page_icon="📊",             # 標籤頁 icon
-    layout="wide"              # 寬版畫面
-)
+# =========================
+# 🔑 載入 API KEY
+# =========================
+load_dotenv()
+API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# ====== API 金鑰設定 ======
-# ⚠️ 注意：實際部署時建議使用 st.secrets 或 .env 管理金鑰
-genai.configure(api_key="AIzaSyBcTohvzAeRE71-GIfCD9sfFsvYf403h8w")
+if not API_KEY:
+    st.error("❌ 請設定 GOOGLE_API_KEY")
+    st.stop()
 
-# ====== 側邊欄：功能與主題選單 ======
-with st.sidebar:
-    st.header("🔧 工具選單")
-    app_mode = st.radio("選擇功能頁", ["📊 資料集分析", "🤖 Gemini 聊天機器人"])  # 功能頁面選擇
+genai.configure(api_key=API_KEY)
+
+# =========================
+# 🤖 模型自動選擇（防404）
+# =========================
+def get_model():
+    model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+    
+    for name in model_names:
+        try:
+            model = genai.GenerativeModel(name)
+            return model
+        except:
+            continue
+    
+    st.error("❌ 無可用模型")
+    st.stop()
+
+# =========================
+# 🧠 Gemini 法律分析
+# =========================
+def analyze_with_ai(text):
+    model = get_model()
+
+    prompt = f"""
+你是一位台灣法律專家，請分析以下案件：
+
+【案件內容】
+{text}
+
+請務必用以下格式回答：
+
+【可能涉及罪名】
+- （列出所有可能罪名）
+
+【法律依據】
+- （列出法條，例如刑法第幾條）
+
+【構成要件分析】
+- （逐點說明為何成立）
+
+【可能法律責任】
+- （刑責或民事責任）
+"""
+
+    response = model.generate_content(prompt)
+    return response.text
+
+# =========================
+# 🗂️ 初始化 session
+# =========================
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {}
+
+if "topic_ids" not in st.session_state:
+    st.session_state.topic_ids = []
+
+if "current_topic" not in st.session_state:
+    st.session_state.current_topic = "new"
+
+# =========================
+# 🎨 UI 主畫面
+# =========================
+st.set_page_config(page_title="法律AI分析系統", page_icon="⚖️")
+
+st.title("⚖️ 法律情境分析系統（Gemini AI）")
+st.write("輸入情境，AI將自動分析涉及的法條與責任")
+
+# =========================
+# ✏️ 使用者輸入
+# =========================
+user_input = st.text_area("📌 請輸入案件情境", height=150)
+
+if st.button("🔍 開始分析"):
+
+    if user_input.strip() == "":
+        st.warning("請輸入內容")
+    else:
+        with st.spinner("AI分析中..."):
+            try:
+                result = analyze_with_ai(user_input)
+
+                # 存成新對話
+                topic_id = len(st.session_state.topic_ids)
+                st.session_state.topic_ids.append(topic_id)
+
+                st.session_state.conversations[topic_id] = {
+                    "title": user_input[:10],
+                    "content": result
+                }
+
+                st.session_state.current_topic = topic_id
+
+            except Exception as e:
+                st.error(f"❌ 錯誤：{e}")
+
+# =========================
+# 📄 顯示結果
+# =========================
+if st.session_state.current_topic != "new":
+    data = st.session_state.conversations[st.session_state.current_topic]
 
     st.markdown("---")
-    st.header("🎨 主題設定")
-    theme = st.selectbox("選擇主題色", ["淺色", "深色"])  # 顏色主題選擇
+    st.subheader(f"📂 案件：{data['title']}")
+    st.write(data["content"])
 
-    # 如果使用者選擇的是資料集分析，顯示相關設定
-    if app_mode == "📊 資料集分析":
-        show_preview = st.checkbox("顯示資料預覽", value=True)  # 是否預覽資料
-        num_rows = st.slider("顯示幾列資料", min_value=5, max_value=100, value=10)  # 顯示列數
-        st.info("請上傳 CSV 檔案。")
+# =========================
+# 📚 側邊欄
+# =========================
+with st.sidebar:
+    st.header("🗂️ 案件紀錄")
 
-# ====== 根據主題切換顏色樣式（套用 CSS） ======
-if theme == "深色":
-    st.markdown("""
-        <style>
-        .stApp { background-color: #000000; color: white; }
-        section[data-testid="stSidebar"] { background-color: #111111; color: white; }
-        h1, h2, h3, h4, h5, h6, p { color: white !important; }
-        .dataframe th, .dataframe td { color: white !important; }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <style>
-        .stApp { background-color: #ffffff; color: black; }
-        section[data-testid="stSidebar"] { background-color: #f0f2f6; color: black; }
-        </style>
-    """, unsafe_allow_html=True)
+    if st.button("🆕 新案件"):
+        st.session_state.current_topic = "new"
 
-# ====== 📊 功能 1：資料集分析 ======
-if app_mode == "📊 資料集分析":
-    st.title("HW.1")  # 標題
-    st.markdown("上傳一個 Kaggle 或其他來源的 `.csv` 檔案，進行資料預覽與簡易分析。")
+    for tid in st.session_state.topic_ids:
+        title = st.session_state.conversations[tid]["title"]
 
-    # 使用者上傳檔案
-    uploaded_file = st.file_uploader("📤 上傳你的 CSV 檔案", type=["csv"])
+        label = f"✔️ {title}" if tid == st.session_state.current_topic else title
 
-    # 如果有上傳檔案
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file)  # 嘗試讀取 CSV 檔
-            st.success("✅ 成功載入資料！")
+        if st.button(label, key=f"topic_{tid}"):
+            st.session_state.current_topic = tid
 
-            if show_preview:
-                # 三個頁籤：資料預覽、統計數據、欄位篩選
-                tab1, tab2, tab3 = st.tabs(["🔍 資料預覽", "📊 敘述統計", "🧩 欄位篩選"])
+    st.markdown("---")
 
-                with tab1:
-                    st.subheader("🔍 預覽前幾列")
-                    st.dataframe(df.head(num_rows), use_container_width=True)
-
-                with tab2:
-                    st.subheader("📊 資料敘述統計")
-                    st.write(df.describe())  # 顯示統計描述（平均、標準差等）
-
-                with tab3:
-                    st.subheader("🧩 欄位篩選器")
-                    column = st.selectbox("請選擇要顯示的欄位", df.columns)
-                    st.dataframe(df[[column]].head(num_rows), use_container_width=True)
-
-            else:
-                st.warning("📌 資料內容目前已被隱藏。請在左側勾選『顯示資料預覽』查看資料。")
-
-        except Exception as e:
-            # 錯誤處理：如果 CSV 格式錯誤
-            st.error(f"❌ 錯誤：無法讀取檔案，請確認格式正確。\n\n{e}")
-    else:
-        st.warning("📌 請上傳一個 `.csv` 檔案。")
-
-# ====== 🤖 功能 2：Gemini 聊天機器人 ======
-elif app_mode == "🤖 Gemini 聊天機器人":
-    st.title("🤖 Gemini Chatbot")
-    st.markdown("請輸入任何問題，Gemini 將會回應你。")
-
-    # 使用者輸入問題
-    user_input = st.text_area("✏️ 你想問 Gemini 什麼？", height=100)
-
-    # 按下送出按鈕
-    if st.button("🚀 送出"):
-        if user_input.strip() == "":
-            st.warning("請輸入問題後再送出。")
-        elif len(user_input) > 1000:
-            st.warning("⚠️ 輸入過長，請簡化你的問題（最多 1000 字元）。")
-        else:
-            with st.spinner("Gemini 正在生成回應..."):
-                try:
-                    # 建立 Gemini 模型實例（使用 1.5 Flash）
-                    model = genai.GenerativeModel("models/gemini-1.5-flash")
-
-                    # 發送問題，使用 stream 回傳方式
-                    response = model.generate_content(user_input, stream=True)
-
-                    st.success("✅ Gemini 回應：")
-                    full_response = ""
-                    for chunk in response:
-                        if chunk.text:
-                            full_response += chunk.text
-                            st.markdown(chunk.text)  # 顯示逐段回應
-
-                except requests.exceptions.Timeout:
-                    st.error("⏰ 請求逾時，請稍後再試。")
-                except Exception as e:
-                    st.error(f"❌ 發生錯誤：{e}")
+    if st.button("🧹 清除紀錄"):
+        st.session_state.conversations = {}
+        st.session_state.topic_ids = []
+        st.session_state.current_topic = "new"
