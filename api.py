@@ -1,144 +1,160 @@
 import streamlit as st
-import google.generativeai as genai
-from dotenv import load_dotenv
-import os
+import cv2
+import numpy as np
+import ollama
+from groq import Groq
+import base64
+import time
 
 # =========================
-# 🔑 載入 API KEY
+# 1. 設定與 API 金鑰
 # =========================
-load_dotenv()
-API_KEY = os.getenv("GOOGLE_API_KEY")
+GROQ_API_KEY = "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"
+traffic_video_url = "https://tcnvr3.taichung.gov.tw/983191db"
 
-if not API_KEY:
-    st.error("❌ 請設定 GOOGLE_API_KEY")
-    st.stop()
-
-genai.configure(api_key=API_KEY)
-
-# =========================
-# 🤖 模型自動選擇（防404）
-# =========================
-def get_model():
-    model_names = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-    
-    for name in model_names:
-        try:
-            model = genai.GenerativeModel(name)
-            return model
-        except:
-            continue
-    
-    st.error("❌ 無可用模型")
-    st.stop()
-
-# =========================
-# 🧠 Gemini 法律分析
-# =========================
-def analyze_with_ai(text):
-    model = get_model()
-
-    prompt = f"""
-你是一位台灣法律專家，請分析以下案件：
-
-【案件內容】
-{text}
-
-請務必用以下格式回答：
-
-【可能涉及罪名】
-- （列出所有可能罪名）
-
-【法律依據】
-- （列出法條，例如刑法第幾條）
-
-【構成要件分析】
-- （逐點說明為何成立）
-
-【可能法律責任】
-- （刑責或民事責任）
+traffic_prompt = """
+請仔細分析這張即時路況畫面，提供以下詳細資訊：
+1. 交通流量狀態 (擁擠程度、車輛密度)
+2. 道路環境觀察 (天氣、光線、道路類型)
+3. 異常狀況偵測 (事故、施工、障礙物)
+請使用繁體中文且盡可能的提供具體、客觀和詳細的描述。
 """
 
-    response = model.generate_content(prompt)
-    return response.text
+# =========================
+# 2. 影像連線相關函式
+# =========================
+def create_cap():
+    """建立新的攝影機連線"""
+    cap = cv2.VideoCapture(traffic_video_url)
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # 🔥 關鍵：避免延遲累積
+    return cap
+
+def encode_image(image):
+    _, buffer = cv2.imencode(".jpg", image)
+    return base64.b64encode(buffer).decode("utf-8")
 
 # =========================
-# 🗂️ 初始化 session
+# 3. AI 分析
 # =========================
-if "conversations" not in st.session_state:
-    st.session_state.conversations = {}
+def analyze_image(image, api_choice):
+    base64_img = encode_image(image)
 
-if "topic_ids" not in st.session_state:
-    st.session_state.topic_ids = []
+    if api_choice == "Ollama":
+        try:
+            response = ollama.chat(
+                model="llama3.2-vision:11b",
+                messages=[{
+                    "role": "user",
+                    "content": traffic_prompt,
+                    "images": [base64_img]
+                }]
+            )
+            return response["message"]["content"]
+        except Exception as e:
+            return f"Ollama 錯誤：{e}"
 
-if "current_topic" not in st.session_state:
-    st.session_state.current_topic = "new"
-
-# =========================
-# 🎨 UI 主畫面
-# =========================
-st.set_page_config(page_title="法律AI分析系統", page_icon="⚖️")
-
-st.title("⚖️ 法律情境分析系統（Gemini AI）")
-st.write("輸入情境，AI將自動分析涉及的法條與責任")
-
-# =========================
-# ✏️ 使用者輸入
-# =========================
-user_input = st.text_area("📌 請輸入案件情境", height=150)
-
-if st.button("🔍 開始分析"):
-
-    if user_input.strip() == "":
-        st.warning("請輸入內容")
-    else:
-        with st.spinner("AI分析中..."):
-            try:
-                result = analyze_with_ai(user_input)
-
-                # 存成新對話
-                topic_id = len(st.session_state.topic_ids)
-                st.session_state.topic_ids.append(topic_id)
-
-                st.session_state.conversations[topic_id] = {
-                    "title": user_input[:10],
-                    "content": result
-                }
-
-                st.session_state.current_topic = topic_id
-
-            except Exception as e:
-                st.error(f"❌ 錯誤：{e}")
+    elif api_choice == "Groq":
+        try:
+            client = Groq(api_key=GROQ_API_KEY)
+            completion = client.chat.completions.create(
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": traffic_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_img}"
+                            }
+                        }
+                    ]
+                }],
+                temperature=0.7,
+                max_completion_tokens=500
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            return f"Groq 錯誤：{e}"
 
 # =========================
-# 📄 顯示結果
+# 4. 即時影像顯示（LV2 核心）
 # =========================
-if st.session_state.current_topic != "new":
-    data = st.session_state.conversations[st.session_state.current_topic]
+@st.fragment(run_every=0.3)
+def show_live_stream():
+    # 初始化 cap
+    if "cap" not in st.session_state:
+        st.session_state.cap = create_cap()
+        st.session_state.fail_count = 0
 
-    st.markdown("---")
-    st.subheader(f"📂 案件：{data['title']}")
-    st.write(data["content"])
+    cap = st.session_state.cap
+
+    # 若 cap 異常，直接重連
+    if not cap.isOpened():
+        cap.release()
+        st.session_state.cap = create_cap()
+        st.session_state.fail_count = 0
+        st.warning("⚠️ 重新連線中...")
+        return
+
+    ret, frame = cap.read()
+
+    # 讀取失敗 → 累計失敗次數
+    if not ret or frame is None:
+        st.session_state.fail_count += 1
+
+        # 連續失敗 3 次才重連（避免抖動）
+        if st.session_state.fail_count >= 3:
+            cap.release()
+            st.session_state.cap = create_cap()
+            st.session_state.fail_count = 0
+            st.warning("⚠️ 影像中斷，已自動重新連線")
+        return
+
+    # 成功讀取，歸零失敗次數
+    st.session_state.fail_count = 0
+    st.session_state.current_frame = frame
+
+    st.image(
+        frame,
+        channels="BGR",
+        use_container_width=True,
+        caption="🔴 即時路況（自動重連）"
+    )
 
 # =========================
-# 📚 側邊欄
+# 5. Streamlit 主介面
 # =========================
-with st.sidebar:
-    st.header("🗂️ 案件紀錄")
+st.title("🚦 即時路況分析系統")
 
-    if st.button("🆕 新案件"):
-        st.session_state.current_topic = "new"
+if "current_frame" not in st.session_state:
+    st.session_state.current_frame = None
 
-    for tid in st.session_state.topic_ids:
-        title = st.session_state.conversations[tid]["title"]
+col1, col2 = st.columns([2, 1])
 
-        label = f"✔️ {title}" if tid == st.session_state.current_topic else title
+with col1:
+    show_live_stream()
 
-        if st.button(label, key=f"topic_{tid}"):
-            st.session_state.current_topic = tid
+with col2:
+    st.subheader("控制台")
+    api_choice = st.radio("選擇 AI 模型", ["Ollama", "Groq"])
+    st.divider()
 
-    st.markdown("---")
+    if st.button("📸 立即截圖分析", type="primary"):
+        if st.session_state.current_frame is not None:
+            st.image(
+                st.session_state.current_frame,
+                channels="BGR",
+                caption="已擷取當前畫面",
+                use_container_width=True
+            )
 
-    if st.button("🧹 清除紀錄"):
-        st.session_state.conversations = {}
-        st.session_state.topic_ids = []
-        st.session_state.current_topic = "new"
+            with st.spinner("AI 分析中..."):
+                result = analyze_image(
+                    st.session_state.current_frame,
+                    api_choice
+                )
+                st.success("分析完成！")
+                st.markdown(f"### 📊 分析報告\n{result}")
+        else:
+            st.warning("影像尚未就緒，請稍候")
